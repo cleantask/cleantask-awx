@@ -299,6 +299,9 @@ Même playbook pour la prod plus tard : `deploy-prod` → inventaire `cleantask-
 Par défaut staging déploie la branche **`dev`** (`inventories/staging/.../env.yml`).  
 Prod plus tard : `app_version: main`. Override ponctuel : `-e version=<tag|sha>`.
 
+`GUNICORN_WORKERS` : staging = **2** (petite VM) ; prod CPX42 = **8**  
+(voir `cleantask` → `docs/Infrastructure/PERF_TEST_CPX42.md`).
+
 nginx + Cloudflare Tunnel = **étape suivante** (pas encore dans ce job).
 
 ---

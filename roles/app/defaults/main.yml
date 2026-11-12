@@ -42,3 +42,5 @@ app_assistant_openrouter_base_url: "https://openrouter.ai/api/v1"
 app_assistant_openrouter_zdr: "true"
 app_assistant_azure_api_version: "2024-10-21"
 app_assistant_bedrock_region: "eu-central-1"
+# Gunicorn Uvicorn workers (override per inventory). Prod CPX42: 8 or 9.
+app_gunicorn_workers: 3
