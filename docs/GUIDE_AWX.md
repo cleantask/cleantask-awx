@@ -24,7 +24,9 @@ Chiffrer **chaque valeur**, pas le fichier entier.
 Le mot de passe du **coffre** → identifiant AWX `vault-cleantask` (jamais dans Git).  
 Ne pas faire : `ansible-vault encrypt` sur tout le fichier vault.
 Un vault **par environnement** :
-`inventories/staging/group_vars/all/vault.yml` et plus tard `inventories/prod/.../vault.yml`.
+`inventories/staging/vault.yml` et plus tard `inventories/prod/vault.yml`.
+**Pas** sous `group_vars/` : AWX corrompt les blocs `!vault` à l’import d’inventaire.
+Chargé au début du playbook (rôle `load_vault`).
 
 ```bash
 cd ~/Dev/cleantask-awx
@@ -38,12 +40,12 @@ openssl rand -base64 32
 ```bash
 SECRET=$(openssl rand -base64 24)
 .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' "$SECRET"
-# coller le bloc !vault dans inventories/staging/group_vars/all/vault.yml
+# coller le bloc !vault dans inventories/staging/vault.yml
 ```
 
 ### 2.2 Secrets app (staging = valeurs du `.env` local)
 
-Fichier : **`inventories/staging/group_vars/all/vault.yml`**  
+Fichier : **`inventories/staging/vault.yml`**  
 (prod = autre fichier, autres valeurs — voir `inventories/prod/.../vault.yml.example`).
 
 Pour chaque clé : prendre la valeur dans `~/Dev/cleantask/.env`, puis :
@@ -104,13 +106,13 @@ cat cleantask_app_deploy.pub
 
 ```bash
 .venv/bin/ansible-vault encrypt_string --stdin-name 'vault_app_git_deploy_key' < cleantask_app_deploy
-# coller le bloc dans inventories/staging/group_vars/all/vault.yml
+# coller le bloc dans inventories/staging/vault.yml
 rm cleantask_app_deploy cleantask_app_deploy.pub
 ```
 
 3. Commit + push le vault staging → sync projet AWX.
 
-Liste complète : `inventories/staging/group_vars/all/vault.yml.example`.
+Liste complète : `inventories/staging/vault.yml.example`.
 ---
 
 ## 3. Créer dans AWX (ordre)
@@ -259,8 +261,8 @@ Déploie l’app sur la VM (`deploy.yml` → rôle `app`) : clone Git,
 
 - [ ] `server-setup-staging` déjà **Réussi**
 - [ ] Snapshot Proxmox récent (recommandé)
-- [ ] Secrets §2.2 + §2.3 dans `inventories/staging/.../vault.yml` (`!vault` only)
-- [ ] Vault staging poussé sur `main`
+- [ ] Secrets §2.2 + §2.3 dans `inventories/staging/vault.yml` (`!vault` only)
+- [ ] Vault staging poussé sur `main` ; **resync inventaire** AWX (Remplacer les variables) pour purger d’anciens vaults importés
 - [ ] Deploy key **publique** sur `cleantask/cleantask`
 - [ ] Projet AWX **synchronisé** (vert)
 

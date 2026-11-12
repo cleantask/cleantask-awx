@@ -1,0 +1,18 @@
+---
+# Load inventories/<env>/vault.yml from the project checkout.
+# Keep vault files OUT of group_vars/: AWX inventory sync corrupts !vault
+# blocks when it imports them into the inventory database.
+
+- name: env_name is set (staging|prod)
+  assert:
+    that:
+      - env_name is defined
+      - env_name | length > 0
+    fail_msg: >-
+      env_name is missing. Set it in inventories/<env>/group_vars/all/env.yml.
+    quiet: true
+
+- name: Load vault for {{ env_name }}
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/inventories/{{ env_name }}/vault.yml"
+  no_log: true

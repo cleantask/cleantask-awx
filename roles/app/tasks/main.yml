@@ -17,7 +17,7 @@
       - (docs_domain | default('') | length) > 0
     fail_msg: >-
       Missing app secret or domain. Encrypt the vault_* keys listed in
-      inventories/<env>/group_vars/all/vault.yml.example and set
+      inventories/<env>/vault.yml.example and set
       app_domain / docs_domain in inventories/<env>/group_vars/all/env.yml.
     quiet: true
 

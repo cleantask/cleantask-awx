@@ -118,16 +118,14 @@ cleantask-awx/
 ├── inventories/
 │   ├── staging/
 │   │   ├── hosts.yml
-│   │   └── group_vars/all/
-│   │       ├── env.yml
-│   │       ├── vault.yml          # !vault encrypt_string (staging)
-│   │       └── vault.yml.example
+│   │   ├── vault.yml              # !vault — hors group_vars (load_vault)
+│   │   ├── vault.yml.example
+│   │   └── group_vars/all/env.yml # non-secrets seulement
 │   └── prod/
 │       ├── hosts.yml
-│       └── group_vars/all/
-│           ├── env.yml
-│           ├── vault.yml          # plus tard — secrets différents
-│           └── vault.yml.example
+│       ├── vault.yml
+│       ├── vault.yml.example
+│       └── group_vars/all/env.yml
 ├── group_vars/all/
 │   └── main.yml            # fuseau, PostgreSQL… (pas de secrets)
 ├── roles/
@@ -323,7 +321,7 @@ docs_domain: docs-staging.cleantask.co
 
 ## 8. Secrets
 
-- `inventories/<env>/group_vars/all/vault.yml` : **chaque secret** chiffré
+- `inventories/<env>/vault.yml` : **chaque secret** chiffré
   avec `ansible-vault encrypt_string` (blocs `!vault`), un fichier par
   environnement — détail dans [`GUIDE_AWX.md`](GUIDE_AWX.md) §2.
 - Contenu : `SECRET_KEY` et anciennes clés, clés de chiffrement des champs,

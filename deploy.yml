@@ -11,5 +11,10 @@
   any_errors_fatal: true
   force_handlers: true
 
+  pre_tasks:
+    - name: Load per-environment vault
+      import_role:
+        name: load_vault
+
   roles:
     - app

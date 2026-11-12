@@ -14,6 +14,10 @@
   force_handlers: true
 
   pre_tasks:
+    - name: Load per-environment vault
+      import_role:
+        name: load_vault
+
     - name: Preflight checks before touching anything
       import_role:
         name: preflight

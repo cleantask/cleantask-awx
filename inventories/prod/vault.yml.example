@@ -1,14 +1,11 @@
 ---
-# Staging secrets — encrypt_string (not whole-file encrypt). See GUIDE_AWX §2.
+# Production secrets — encrypt_string (not whole-file encrypt). See GUIDE_AWX §2.
 #
-# Path: inventories/staging/group_vars/all/vault.yml
-# Prod will use inventories/prod/group_vars/all/vault.yml (different values).
-#
-# Staging ≈ ~/Dev/cleantask/.env. Host overlays (DATABASE_URL, SITE_URL, …)
-# come from roles/app — do not vault those.
+# Path: inventories/prod/vault.yml  (NOT under group_vars).
+# Do NOT ship staging secrets here long-term (new Postgres/Redis/Stripe live…).
 #
 #   .venv/bin/ansible-vault encrypt_string --stdin-name 'vault_…'
-# Mot de passe du coffre → AWX credential vault-cleantask (jamais dans Git).
+# Prefer a separate AWX vault credential for prod when you create it.
 
 # ── server_setup ──────────────────────────────────────────────────────────
 vault_pg_password: A_RENSEIGNER

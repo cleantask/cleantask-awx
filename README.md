@@ -26,7 +26,7 @@ python3 -m venv .venv && .venv/bin/pip install 'ansible-core>=2.16,<2.20'
 # Secrets: encrypt each value (see docs/GUIDE_AWX.md), e.g.
 #   SECRET=$(openssl rand -base64 24)
 #   .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' "$SECRET"
-# Paste the !vault block into inventories/staging/group_vars/all/vault.yml
+# Paste the !vault block into inventories/staging/vault.yml
 # (prod = inventories/prod/.../vault.yml). Do not encrypt the whole file.
 
 # Prefer running jobs from the AWX console (docs/GUIDE_AWX.md).
