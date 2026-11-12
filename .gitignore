@@ -12,9 +12,9 @@ __pycache__/
 collections/*
 !collections/requirements.yml
 
-# Local plaintext drafts only — the real vault.yml uses !vault blocks and is
-# committed. Never commit a copy with cleartext secrets.
-group_vars/all/vault.yml.local
+# Local plaintext drafts only — real vault.yml files use !vault blocks and
+# are committed under inventories/<env>/group_vars/all/.
+**/vault.yml.local
 *.vault
 .env
 .env.*

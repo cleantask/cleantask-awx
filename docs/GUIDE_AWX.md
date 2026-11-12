@@ -22,7 +22,9 @@ AWX : machine `ansible` (`192.168.10.114`).
 
 Chiffrer **chaque valeur**, pas le fichier entier.  
 Le mot de passe du **coffre** → identifiant AWX `vault-cleantask` (jamais dans Git).  
-Ne pas faire : `ansible-vault encrypt group_vars/all/vault.yml`.
+Ne pas faire : `ansible-vault encrypt` sur tout le fichier vault.
+Un vault **par environnement** :
+`inventories/staging/group_vars/all/vault.yml` et plus tard `inventories/prod/.../vault.yml`.
 
 ```bash
 cd ~/Dev/cleantask-awx
@@ -36,16 +38,19 @@ openssl rand -base64 32
 ```bash
 SECRET=$(openssl rand -base64 24)
 .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' "$SECRET"
-# coller le bloc !vault dans group_vars/all/vault.yml
+# coller le bloc !vault dans inventories/staging/group_vars/all/vault.yml
 ```
 
 ### 2.2 Secrets app (staging = valeurs du `.env` local)
+
+Fichier : **`inventories/staging/group_vars/all/vault.yml`**  
+(prod = autre fichier, autres valeurs — voir `inventories/prod/.../vault.yml.example`).
 
 Pour chaque clé : prendre la valeur dans `~/Dev/cleantask/.env`, puis :
 
 ```bash
 .venv/bin/ansible-vault encrypt_string --stdin-name 'NOM_VAULT'
-# coller la valeur → Entrée → Ctrl-D → coller le bloc dans vault.yml
+# coller → Entrée → Ctrl-D → coller le bloc dans le vault **staging**
 ```
 
 | Clé vault | Source `.env` | Obligatoire |
@@ -89,13 +94,13 @@ cat cleantask_app_deploy.pub
 
 ```bash
 .venv/bin/ansible-vault encrypt_string --stdin-name 'vault_app_git_deploy_key' < cleantask_app_deploy
-# coller le bloc dans vault.yml
+# coller le bloc dans inventories/staging/group_vars/all/vault.yml
 rm cleantask_app_deploy cleantask_app_deploy.pub
 ```
 
-3. Commit + push `vault.yml` → sync projet AWX.
+3. Commit + push le vault staging → sync projet AWX.
 
-Liste complète : `group_vars/all/vault.yml.example`.
+Liste complète : `inventories/staging/group_vars/all/vault.yml.example`.
 ---
 
 ## 3. Créer dans AWX (ordre)
@@ -244,8 +249,8 @@ Déploie l’app sur la VM (`deploy.yml` → rôle `app`) : clone Git,
 
 - [ ] `server-setup-staging` déjà **Réussi**
 - [ ] Snapshot Proxmox récent (recommandé)
-- [ ] Secrets §2.2 + §2.3 dans `vault.yml` (blocs `!vault` uniquement)
-- [ ] `vault.yml` poussé sur `main`
+- [ ] Secrets §2.2 + §2.3 dans `inventories/staging/.../vault.yml` (`!vault` only)
+- [ ] Vault staging poussé sur `main`
 - [ ] Deploy key **publique** sur `cleantask/cleantask`
 - [ ] Projet AWX **synchronisé** (vert)
 
@@ -290,7 +295,7 @@ nginx + Cloudflare Tunnel = **étape suivante** (pas encore dans ce job).
 
 | Secret | Où |
 |---|---|
-| Postgres, Django, Redis, Outlook, deploy key app… | `vault.yml` en `!vault` + credential `vault-cleantask` |
+| Postgres, Django, Redis, Outlook, deploy key app… | `inventories/<env>/.../vault.yml` (`!vault`) + credential `vault-cleantask` |
 | SSH serveurs | AWX `ssh-cleantask` seulement |
 | Clone du dépôt **Ansible** | AWX `git-cleantask-awx` seulement |
 | Clone du dépôt **application** | clé dans `vault_app_git_deploy_key` (sur le serveur) |
@@ -311,7 +316,7 @@ Jamais de secret en clair dans les Variables d’un modèle.
 | SSH `Permission denied` | clé AWX dans `authorized_keys`, user `ubuntu` |
 | `Missing sudo password` | NOPASSWD pour `ubuntu` |
 | `Failed to JSON parse … b''` | EE `latest` → version numérotée |
-| Deploy : assert vault_* | secrets manquants dans `vault.yml` (voir `.example`) |
+| Deploy : assert vault_* | secrets manquants dans le vault de l’env (voir `.example`) |
 | Deploy : git clone fail | deploy key absente sur `cleantask/cleantask` |
 | Deploy : health timeout | `docker compose … logs web` sur la VM |
 
@@ -319,7 +324,7 @@ Jamais de secret en clair dans les Variables d’un modèle.
 
 ## 6. Checklist
 
-- [ ] `vault.yml` en `!vault` seulement, pushé sur `main`
+- [ ] Vault staging en `!vault` seulement, poussé sur `main`
 - [ ] Snapshot Proxmox staging avant le 1er job
 - [ ] Clé `ssh-cleantask` dans `authorized_keys` de `ubuntu`
 - [ ] Org + 3 identifiants + projet sync vert
