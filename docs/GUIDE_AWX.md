@@ -13,7 +13,7 @@ AWX : machine `ansible` (`192.168.10.114`).
 | Dépôt | Qui clone |
 |---|---|
 | `cleantask/cleantask-awx` | **AWX** (playbooks) |
-| `cleantask/cleantask` | Le serveur (rôle `app`, plus tard) |
+| `cleantask/cleantask` | Le serveur (rôle `app` / `deploy.yml`) |
 | `cleantask/cleantask-website` / `cleantask-docs` | Le serveur (plus tard) |
 
 ---
@@ -21,39 +21,69 @@ AWX : machine `ansible` (`192.168.10.114`).
 ## 2. Vault (`encrypt_string`)
 
 Chiffrer **chaque valeur**, pas le fichier entier.  
-Le mot de passe du **coffre** → identifiant AWX `vault-cleantask` (jamais dans Git).
+Le mot de passe du **coffre** → identifiant AWX `vault-cleantask` (jamais dans Git).  
+Ne pas faire : `ansible-vault encrypt group_vars/all/vault.yml`.
 
 ```bash
 cd ~/Dev/cleantask-awx
 
 # Mot de passe du coffre (une fois) → noter + credential vault-cleantask
 openssl rand -base64 32
+```
 
-# Secret Postgres, puis chiffrement
+### 2.1 Postgres (`server_setup`)
+
+```bash
 SECRET=$(openssl rand -base64 24)
 .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' "$SECRET"
 # coller le bloc !vault dans group_vars/all/vault.yml
 ```
 
-Secret déjà choisi (ex. depuis le `.env` local pour le staging) :
+### 2.2 Secrets app (staging = valeurs du `.env` local)
+
+Pour chaque clé : prendre la valeur dans `~/Dev/cleantask/.env`, puis :
 
 ```bash
-.venv/bin/ansible-vault encrypt_string --stdin-name 'vault_django_secret_key'
-# coller → Entrée → Ctrl-D
+.venv/bin/ansible-vault encrypt_string --stdin-name 'NOM_VAULT'
+# coller la valeur → Entrée → Ctrl-D → coller le bloc dans vault.yml
 ```
 
-Deploy key application (multiligne) :
+| Clé vault | Source `.env` | Obligatoire |
+|---|---|---|
+| `vault_django_secret_key` | `SECRET_KEY` | oui |
+| `vault_django_secret_key_fallbacks` | `SECRET_KEY_FALLBACKS` | non (vide si jamais rotaté) |
+| `vault_field_encryption_salt` | `FIELD_ENCRYPTION_SALT` | oui |
+| `vault_redis_password` | `REDIS_PASSWORD` (ou `openssl rand -hex 32` neuf) | oui |
+| `vault_redis_cache_password` | `REDIS_CACHE_PASSWORD` (ou autre `rand`) | oui |
+| `vault_outlook_client_id` | `OUTLOOK_CLIENT_ID` | oui (boot production) |
+| `vault_outlook_client_secret` | `OUTLOOK_CLIENT_SECRET` | oui |
+| `vault_outlook_client_secret_expires_at` | `OUTLOOK_CLIENT_SECRET_EXPIRES_AT` | oui (`YYYY-MM-DD`) |
+
+À la rotation du secret Entra : re-chiffrer secret + date, commit, `deploy-staging`.
+
+### 2.3 Deploy key application (`cleantask/cleantask`)
+
+Clé **différente** de `git-cleantask-awx` (celui-là = dépôt Ansible seulement).
 
 ```bash
+cd ~/Dev/cleantask-awx
 ssh-keygen -t ed25519 -C cleantask-app-deploy -f cleantask_app_deploy -N ""
-# GitHub → cleantask/cleantask → Deploy keys (lecture seule) : coller le .pub
+cat cleantask_app_deploy.pub
+```
+
+1. GitHub → repo **`cleantask/cleantask`** → **Settings → Deploy keys → Add**  
+   titre `awx-app`, coller le `.pub`, **Allow write access décoché**.
+2. Chiffrer la **privée** :
+
+```bash
 .venv/bin/ansible-vault encrypt_string --stdin-name 'vault_app_git_deploy_key' < cleantask_app_deploy
+# coller le bloc dans vault.yml
 rm cleantask_app_deploy cleantask_app_deploy.pub
 ```
 
-Liste complète des clés : `group_vars/all/vault.yml.example`.  
-Ne pas faire : `ansible-vault encrypt group_vars/all/vault.yml`.
+3. Commit + push `vault.yml` → sync projet AWX.
 
+Liste complète : `group_vars/all/vault.yml.example`.
 ---
 
 ## 3. Créer dans AWX (ordre)
@@ -195,11 +225,23 @@ Puis **Lancer**.
 
 ### 3.6 Modèle `deploy-staging` (application)
 
-**Avant** : chiffrer les secrets app dans `vault.yml` (voir `vault.yml.example`),
-commit + push, et ajouter une **deploy key lecture seule** sur
-`cleantask/cleantask` (clé privée → `vault_app_git_deploy_key`).
+Déploie l’app sur la VM (`deploy.yml` → rôle `app`) : clone Git,
+`.env`, Compose (`db.internal` → Postgres hôte), migrate, health.
 
-**Modèles → Ajouter**
+#### Prérequis
+
+- [ ] `server-setup-staging` déjà **Réussi**
+- [ ] Snapshot Proxmox récent (recommandé)
+- [ ] Secrets §2.2 + §2.3 dans `vault.yml` (blocs `!vault` uniquement)
+- [ ] `vault.yml` poussé sur `main`
+- [ ] Deploy key **publique** sur `cleantask/cleantask`
+- [ ] Projet AWX **synchronisé** (vert)
+
+#### Créer le modèle
+
+**Modèles → Ajouter → Ajouter un modèle de job**
+
+Même playbook pour la prod plus tard : `deploy-prod` → inventaire `cleantask-prod`.
 
 | Champ | Valeur |
 |---|---|
@@ -208,14 +250,24 @@ commit + push, et ajouter une **deploy key lecture seule** sur
 | Type de job | Exécuter |
 | Inventaire | `cleantask-staging` |
 | Projet | `cleantask-awx` |
-| Environnement d’exécution | même EE qu’en 3.4 |
+| Environnement d’exécution | même EE numéroté qu’en 3.4 (**pas** `latest`) |
 | Playbook | `deploy.yml` |
-| Informations d’identification | Machine `ssh-cleantask` **et** Vault `vault-cleantask` |
-| Élévation des privilèges | **cochée** |
-| Variables | optionnel : `version: main` (branche / tag / sha) |
+| Informations d’identification | **deux pastilles** : Machine `ssh-cleantask` **et** Vault `vault-cleantask` |
+| Options → Élévation des privilèges | **cochée** |
+| Variables d’extra | vide, ou `version: main` (branche / tag / sha) |
+| Demander les variables au lancement | au choix (pratique pour `-e version=…`) |
 
-Santé attendue : `http://127.0.0.1:8000/core/health/` → 200  
-(nginx + tunnel Cloudflare = étape suivante).
+**Enregistrer → Lancer.**
+
+#### Vérifier
+
+| Contrôle | Attendu |
+|---|---|
+| Job AWX | **Réussi** |
+| Sur la VM : `curl -fsS -H 'Host: localhost' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8000/core/health/` | HTTP **200** |
+| Sur la VM : `cd /opt/cleantask && docker compose -f docker-compose.prod.yml -f docker-compose.override.yml ps` | `web`, `worker`, `redis`, … Up |
+
+nginx + Cloudflare Tunnel = **étape suivante** (pas encore dans ce job).
 
 ---
 
