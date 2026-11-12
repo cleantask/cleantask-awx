@@ -33,6 +33,15 @@
     - "{{ app_deploy_key_dir | dirname }}"
     - "{{ app_media_host_path | dirname }}"
 
+# Create app_root as root then chown: ubuntu cannot mkdir under /opt.
+- name: Application root directory
+  file:
+    path: "{{ app_root }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
 - name: Deploy-key directory
   file:
     path: "{{ app_deploy_key_dir }}"
