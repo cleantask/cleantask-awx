@@ -375,9 +375,9 @@ identique.
 
 1. **AWX d’abord** (voir [`GUIDE_AWX.md`](GUIDE_AWX.md)) : organisation,
    credentials, projet GitHub `cleantask/cleantask-awx`, inventaire staging,
-   modèle `server-setup`. Le vault doit être **chiffré** avant le push.
+   modèle `server-setup-staging`. Le vault doit être **chiffré** avant le push.
    Remettre la VM au snapshot si un run local l’a déjà modifiée.
-2. **Staging de base via la console** : job `server-setup` (`preflight`,
+2. **Staging de base via la console** : job `server-setup-staging` (`preflight`,
    `common`, `network`, `docker`, `postgresql`), puis rôles `app`,
    `static_sites`, `nginx`, `cloudflared` et données de démo.
 3. **Sauvegardes** : `pgbackrest`, `pgdump`, `media_backup`, `restore_db.yml`,

@@ -1,0 +1,210 @@
+---
+# Deploy CleanTask from Git into Docker Compose (see docs § 6.2).
+
+- name: Required vault / inventory values for the app
+  assert:
+    that:
+      - (vault_django_secret_key | default(unset_marker) | string) != unset_marker
+      - (vault_field_encryption_salt | default(unset_marker) | string) != unset_marker
+      - (vault_redis_password | default(unset_marker) | string) != unset_marker
+      - (vault_redis_cache_password | default(unset_marker) | string) != unset_marker
+      - (vault_outlook_client_id | default(unset_marker) | string) != unset_marker
+      - (vault_outlook_client_secret | default(unset_marker) | string) != unset_marker
+      - (vault_outlook_client_secret_expires_at | default(unset_marker) | string) != unset_marker
+      - (vault_app_git_deploy_key | default(unset_marker) | string) != unset_marker
+      - (vault_pg_password | default(unset_marker) | string) != unset_marker
+      - (app_domain | default('') | length) > 0
+      - (docs_domain | default('') | length) > 0
+    fail_msg: >-
+      Missing app secret or domain. Encrypt the vault_* keys listed in
+      group_vars/all/vault.yml.example and set app_domain / docs_domain
+      in inventories/<env>/group_vars/all/env.yml.
+    quiet: true
+
+- name: Parent directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ app_root | dirname }}"
+    - "{{ app_deploy_key_dir | dirname }}"
+    - "{{ app_media_host_path | dirname }}"
+
+- name: Deploy-key directory
+  file:
+    path: "{{ app_deploy_key_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0700"
+
+- name: Media directory
+  file:
+    path: "{{ app_media_host_path }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy key (read-only clone of cleantask)
+  copy:
+    content: "{{ vault_app_git_deploy_key }}\n"
+    dest: "{{ app_deploy_key_dir }}/id_ed25519"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+
+- name: SSH config for the deploy key
+  template:
+    src: ssh_config.j2
+    dest: "{{ app_deploy_key_dir }}/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: Resolve Git SSH URL through the deploy-key host alias
+  set_fact:
+    app_repo_ssh: "{{ app_repo | regex_replace('^git@github\\.com:', 'git@' ~ app_git_ssh_host_alias ~ ':') }}"
+
+- name: Clone or update the application repository
+  become: true
+  become_user: "{{ ansible_user }}"
+  environment:
+    GIT_SSH_COMMAND: "ssh -F {{ app_deploy_key_dir }}/config"
+  git:
+    repo: "{{ app_repo_ssh }}"
+    dest: "{{ app_root }}"
+    version: "{{ version | default(app_version) }}"
+    force: true
+    accept_hostkey: true
+
+- name: Resolved commit SHA
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: git -C {{ app_root }} rev-parse HEAD
+  register: app_git_sha
+  changed_when: false
+
+- name: Image tag and compose command
+  set_fact:
+    app_image_tag: "{{ app_git_sha.stdout[:12] }}"
+    app_compose: >-
+      docker compose
+      -f {{ app_compose_file }}
+      -f {{ app_compose_override }}
+
+- name: Read deploy marker
+  become: true
+  become_user: "{{ ansible_user }}"
+  slurp:
+    src: "{{ app_root }}/{{ app_deploy_marker }}"
+  register: app_marker_slurp
+  failed_when: false
+  changed_when: false
+
+- name: Same commit already marked deployed?
+  set_fact:
+    app_same_commit: >-
+      {{
+        app_marker_slurp.content is defined
+        and (app_marker_slurp.content | b64decode | trim) == app_git_sha.stdout
+      }}
+
+- name: Application environment file
+  template:
+    src: env.j2
+    dest: "{{ app_root }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+  register: app_env
+
+- name: Compose override (db.internal + image tag + subnet)
+  template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ app_root }}/{{ app_compose_override }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  register: app_override
+
+- name: Decide whether a full deploy is needed
+  set_fact:
+    app_needs_deploy: "{{ (not app_same_commit | bool) or (app_env is changed) or (app_override is changed) }}"
+
+- name: Build image {{ app_image_name }}:{{ app_image_tag }}
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: "{{ app_compose }} build"
+  args:
+    chdir: "{{ app_root }}"
+  when: app_needs_deploy | bool
+
+- name: Apply database migrations
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: "{{ app_compose }} run --rm --no-deps web python manage.py migrate --noinput"
+  args:
+    chdir: "{{ app_root }}"
+  when: app_needs_deploy | bool
+
+- name: Verify encrypted fields still decrypt
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: "{{ app_compose }} run --rm --no-deps web python manage.py check_encryption_keys"
+  args:
+    chdir: "{{ app_root }}"
+  when: app_needs_deploy | bool
+
+- name: Verify Outlook client secret expiry
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: "{{ app_compose }} run --rm --no-deps web python manage.py check_outlook_client_secret"
+  args:
+    chdir: "{{ app_root }}"
+  when: app_needs_deploy | bool
+
+- name: Recreate Compose services
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: "{{ app_compose }} up -d --remove-orphans"
+  args:
+    chdir: "{{ app_root }}"
+  when: app_needs_deploy | bool
+  register: app_compose_up
+
+- name: Wait for health endpoint
+  uri:
+    url: "{{ app_health_url }}"
+    headers:
+      Host: "{{ app_health_host_header }}"
+      X-Forwarded-Proto: https
+    status_code: 200
+    return_content: false
+  register: app_health
+  retries: 18
+  delay: 5
+  until: app_health.status | default(0) == 200
+  when: app_needs_deploy | bool
+
+- name: Write deploy marker
+  become: true
+  become_user: "{{ ansible_user }}"
+  copy:
+    content: "{{ app_git_sha.stdout }}\n"
+    dest: "{{ app_root }}/{{ app_deploy_marker }}"
+    mode: "0644"
+  when: app_needs_deploy | bool
+
+- name: Prune dangling images
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: docker image prune -f
+  changed_when: false
+  failed_when: false
+  when: app_needs_deploy | bool

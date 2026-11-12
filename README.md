@@ -13,7 +13,8 @@ Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
 | `inventories/prod/` | Hetzner (to come) |
 | `group_vars/all/` | Shared settings + vault |
 | `roles/` | What to install |
-| `server_setup.yml` | Server only (no application yet) |
+| `server_setup.yml` | Server only (Docker, PostgreSQL, …) |
+| `deploy.yml` | Application (Compose, migrate, health) |
 
 ## Local usage
 

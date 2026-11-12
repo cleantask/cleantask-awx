@@ -1,0 +1,23 @@
+# Managed by Ansible (roles/app). Do not edit by hand.
+# Adds db.internal → host PostgreSQL and pins the default bridge subnet.
+
+x-extra-hosts: &extra-hosts
+  extra_hosts:
+    - "db.internal:host-gateway"
+  image: {{ app_image_name }}:{{ app_image_tag }}
+
+services:
+  web:
+    <<: *extra-hosts
+  worker:
+    <<: *extra-hosts
+  worker-documents:
+    <<: *extra-hosts
+  beat:
+    <<: *extra-hosts
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: {{ app_docker_subnet }}

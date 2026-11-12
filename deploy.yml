@@ -1,0 +1,15 @@
+---
+# Deploy / reconverge the CleanTask application on app_servers.
+# Does not install Docker / PostgreSQL (see server_setup.yml).
+#
+# Extra vars (optional):
+#   -e version=main|v1.2.3|<sha>
+
+- hosts: app_servers
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  force_handlers: true
+
+  roles:
+    - app

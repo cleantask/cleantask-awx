@@ -1,13 +1,38 @@
 ---
 # Secrets — each value encrypted with ansible-vault encrypt_string (not the
-# whole file). See docs/GUIDE_AWX.md §3 « Chiffrer les secrets ».
+# whole file). See docs/GUIDE_AWX.md §2.
 #
-# Workflow:
-#   openssl rand -base64 24
-#   .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' '…'
-#   # paste the YAML block below, replacing A_RENSEIGNER
+# Staging: copy values from ~/Dev/cleantask/.env (same SECRET_KEY / OAuth /
+# encryption salt as local), then overlay host keys via the app role template.
 #
-# The vault password (the one encrypt_string asks for) goes in the AWX
-# credential vault-cleantask — never in Git.
+#   .venv/bin/ansible-vault encrypt_string --name 'vault_django_secret_key' '…'
+#   .venv/bin/ansible-vault encrypt_string --stdin-name 'vault_app_git_deploy_key' < deploy_key
+#
+# Mot de passe du coffre → credential AWX vault-cleantask (jamais dans Git).
 
+# ── server_setup ──────────────────────────────────────────────────────────
 vault_pg_password: A_RENSEIGNER
+
+# ── deploy (rôle app) ─────────────────────────────────────────────────────
+vault_django_secret_key: A_RENSEIGNER
+vault_django_secret_key_fallbacks: ""
+vault_field_encryption_salt: A_RENSEIGNER
+vault_redis_password: A_RENSEIGNER
+vault_redis_cache_password: A_RENSEIGNER
+vault_outlook_client_id: A_RENSEIGNER
+vault_outlook_client_secret: A_RENSEIGNER
+vault_outlook_client_secret_expires_at: A_RENSEIGNER
+# Deploy key privée (ed25519) lecture seule sur cleantask/cleantask — multiligne.
+vault_app_git_deploy_key: A_RENSEIGNER
+
+# ── optionnel ─────────────────────────────────────────────────────────────
+# vault_gmail_client_id: …
+# vault_gmail_client_secret: …
+# vault_postmark_server_token: …
+# vault_email_host: …
+# vault_email_host_user: …
+# vault_email_host_password: …
+# vault_sentry_dsn: …
+# vault_turnstile_site_key: …
+# vault_turnstile_secret_key: …
+# vault_cbeapi_api_key: …

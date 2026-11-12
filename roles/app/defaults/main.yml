@@ -1,0 +1,20 @@
+---
+# Application deploy (Docker Compose). Overridable with -e version=…
+
+app_root: /opt/cleantask
+app_repo: git@github.com:cleantask/cleantask.git
+app_version: main
+app_compose_file: docker-compose.prod.yml
+app_compose_override: docker-compose.override.yml
+app_image_name: cleantask
+app_keep_images: 3
+app_media_host_path: /var/lib/cleantask/media
+# Deploy key lives OUTSIDE app_root so `git clone` sees an empty directory.
+app_deploy_key_dir: /var/lib/cleantask/deploy
+# Fixed bridge subnet so pg_hba + nftables stay predictable.
+app_docker_subnet: 172.28.0.0/16
+# Health before nginx / tunnel exist: hit the published loopback port.
+app_health_url: http://127.0.0.1:8000/core/health/
+app_health_host_header: localhost
+app_deploy_marker: .deployed
+app_git_ssh_host_alias: github.com-cleantask

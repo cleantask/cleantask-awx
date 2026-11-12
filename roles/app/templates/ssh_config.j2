@@ -1,0 +1,7 @@
+# Managed by Ansible (roles/app) — deploy key for cloning {{ app_repo }}
+Host {{ app_git_ssh_host_alias }}
+  HostName github.com
+  User git
+  IdentityFile {{ app_deploy_key_dir }}/id_ed25519
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
