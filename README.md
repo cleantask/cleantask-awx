@@ -2,9 +2,10 @@
 
 Automates the CleanTask servers: staging (Proxmox) and production (Hetzner).
 
-Architecture decisions live in [`docs/PROPOSITION_ARCHITECTURE_ANSIBLE.md`](docs/PROPOSITION_ARCHITECTURE_ANSIBLE.md).
+Architecture decisions live in [`docs/PROPOSITION_ARCHITECTURE_ANSIBLE.md`](docs/PROPOSITION_ARCHITECTURE_ANSIBLE.md).  
+AWX day-to-day: [`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md).  
+Cloudflare Tunnel (create + DNS + vault + `tunnel_setup`): [`docs/CLOUDFLARE_TUNNEL.md`](docs/CLOUDFLARE_TUNNEL.md).  
 Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
-
 ## Layout
 
 | Path | Purpose |
@@ -15,6 +16,7 @@ Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
 | `roles/` | What to install |
 | `server_setup.yml` | Server only (Docker, PostgreSQL, …) |
 | `deploy.yml` | Application (Compose, migrate, health) |
+| `tunnel_setup.yml` | Nginx (loopback) + Cloudflare Tunnel |
 
 ## Local usage
 

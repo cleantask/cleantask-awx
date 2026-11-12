@@ -1,0 +1,9 @@
+---
+# CleanTask edge: Nginx speaks HTTP on loopback only; cloudflared is the
+# public front. No TLS here (Cloudflare Universal SSL terminates at the edge).
+
+nginx_listen: "127.0.0.1:80"
+nginx_app_upstream: "127.0.0.1:8000"
+nginx_client_max_body_size: "20M"
+# Staging should not be indexed.
+nginx_noindex: false

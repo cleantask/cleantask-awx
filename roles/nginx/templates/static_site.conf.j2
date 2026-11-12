@@ -1,0 +1,21 @@
+# {{ item.domain }} — static site (website or docs).
+# Files published by role static_sites into {{ item.root }}/current (later).
+# Until then, a tiny placeholder keeps the tunnel hostname answering.
+
+server {
+    listen {{ nginx_listen }};
+    server_name {{ item.domain }};
+
+    include snippets/cleantask_durcissement.conf;
+
+    root {{ item.root }}/current;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ $uri.html /index.html =404;
+    }
+
+    location ~ /\.git {
+        deny all;
+    }
+}

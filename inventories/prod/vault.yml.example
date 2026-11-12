@@ -48,5 +48,15 @@ vault_assistant_openrouter_api_key: A_RENSEIGNER
 # vault_assistant_azure_api_key: …
 # vault_assistant_local_api_key: …   # useless on the server (localhost)
 
+# ── Cloudflare Tunnel (tunnel_setup) ──────────────────────────────────────
+# Full JSON from ~/.cloudflared/<tunnel-id>.json after:
+#   cloudflared tunnel create cleantask-prod
+vault_cloudflare_tunnel_credentials: |
+  {
+    "AccountTag": "…",
+    "TunnelSecret": "…",
+    "TunnelID": "…"
+  }
+
 # ── optional ──────────────────────────────────────────────────────────────
 # vault_sentry_dsn: …

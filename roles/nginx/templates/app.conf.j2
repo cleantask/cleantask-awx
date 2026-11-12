@@ -1,0 +1,32 @@
+# {{ app_domain }} → Docker web on {{ nginx_app_upstream }}
+# No TLS here: Cloudflare Tunnel terminates HTTPS and talks HTTP to us.
+
+upstream cleantask_app {
+    server {{ nginx_app_upstream }};
+    keepalive 32;
+}
+
+server {
+    listen {{ nginx_listen }};
+    server_name {{ app_domain }};
+
+    client_max_body_size {{ nginx_client_max_body_size }};
+
+    include snippets/cleantask_durcissement.conf;
+    include snippets/cleantask_proxy_params.conf;
+
+    # Django Channels WebSockets
+    location /ws/ {
+        proxy_pass http://cleantask_app;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
+
+    # App + WhiteNoise /static/ + tenant /media/ (all via Django)
+    location / {
+        proxy_pass http://cleantask_app;
+        proxy_set_header Connection "";
+        proxy_read_timeout 120s;
+    }
+}

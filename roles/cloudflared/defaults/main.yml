@@ -1,0 +1,5 @@
+---
+# Cloudflare Tunnel → local Nginx (127.0.0.1:80). No inbound 80/443 on the host.
+cloudflared_nginx_url: "http://127.0.0.1:80"
+# Set in inventory: cloudflare_tunnel_id (UUID from `cloudflared tunnel create`).
+cloudflare_tunnel_id: ""

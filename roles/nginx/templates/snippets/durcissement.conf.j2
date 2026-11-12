@@ -1,0 +1,12 @@
+server_tokens off;
+proxy_hide_header Server;
+proxy_hide_header X-Powered-By;
+
+if ($request_method ~ ^(TRACE|TRACK)$) { return 405; }
+
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+{% if nginx_noindex | bool %}
+add_header X-Robots-Tag "noindex, nofollow" always;
+{% endif %}

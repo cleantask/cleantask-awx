@@ -1,0 +1,142 @@
+---
+# Host Nginx for CleanTask behind Cloudflare Tunnel (HTTP on 127.0.0.1 only).
+# Unlike yeoki: no public 443, no Let's Encrypt, one app upstream (Docker).
+
+- name: Required domain inventory vars
+  assert:
+    that:
+      - (app_domain | default('') | length) > 0
+      - (website_domain | default('') | length) > 0
+      - (docs_domain | default('') | length) > 0
+    fail_msg: Set app_domain / website_domain / docs_domain in inventories/<env>/…/env.yml.
+    quiet: true
+
+- name: Nginx package
+  apt:
+    name: nginx
+    state: present
+    update_cache: true
+
+- name: Remove Ubuntu default site
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nginx/sites-enabled/default
+    - /etc/nginx/sites-available/default
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Snippets directory
+  file:
+    path: /etc/nginx/snippets
+    state: directory
+    mode: "0755"
+
+- name: Shared hardening snippet
+  template:
+    src: snippets/durcissement.conf.j2
+    dest: /etc/nginx/snippets/cleantask_durcissement.conf
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Shared proxy params (real_ip + forwarded headers)
+  template:
+    src: snippets/proxy_params.conf.j2
+    dest: /etc/nginx/snippets/cleantask_proxy_params.conf
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Catch-all (unknown Host → 444)
+  template:
+    src: 00-default.conf.j2
+    dest: /etc/nginx/sites-available/00-default.conf
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: App vhost {{ app_domain }}
+  template:
+    src: app.conf.j2
+    dest: /etc/nginx/sites-available/cleantask-app.conf
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Static site roots (placeholders until static_sites role)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+  loop:
+    - /var/www/cleantask-website/current
+    - /var/www/cleantask-docs/current
+
+- name: Placeholder index for unpublished static sites
+  copy:
+    src: placeholder.html
+    dest: "{{ item }}"
+    owner: www-data
+    group: www-data
+    mode: "0644"
+    force: false
+  loop:
+    - /var/www/cleantask-website/current/index.html
+    - /var/www/cleantask-docs/current/index.html
+
+- name: Website vhost {{ website_domain }}
+  template:
+    src: static_site.conf.j2
+    dest: /etc/nginx/sites-available/cleantask-website.conf
+    mode: "0644"
+  vars:
+    item:
+      domain: "{{ website_domain }}"
+      root: /var/www/cleantask-website
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Docs vhost {{ docs_domain }}
+  template:
+    src: static_site.conf.j2
+    dest: /etc/nginx/sites-available/cleantask-docs.conf
+    mode: "0644"
+  vars:
+    item:
+      domain: "{{ docs_domain }}"
+      root: /var/www/cleantask-docs
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Enable sites
+  file:
+    src: "/etc/nginx/sites-available/{{ item }}"
+    dest: "/etc/nginx/sites-enabled/{{ item }}"
+    state: link
+  loop:
+    - 00-default.conf
+    - cleantask-app.conf
+    - cleantask-website.conf
+    - cleantask-docs.conf
+  notify:
+    - validate nginx
+    - reload nginx
+
+- name: Nginx running
+  systemd:
+    name: nginx
+    state: started
+    enabled: true
+
+- meta: flush_handlers

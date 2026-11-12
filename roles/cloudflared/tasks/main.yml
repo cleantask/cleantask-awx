@@ -1,0 +1,70 @@
+---
+# Cloudflare Tunnel for CleanTask (staging + prod). Unlike yeoki's wildcard
+# catch-all, we pin the three hostnames of this environment explicitly.
+
+- name: Required tunnel inventory + vault
+  assert:
+    that:
+      - (cloudflare_tunnel_id | default('') | length) > 0
+      - (cloudflare_tunnel_id | string) != (unset_marker | default('A_RENSEIGNER'))
+      - (vault_cloudflare_tunnel_credentials | default(unset_marker) | string) != unset_marker
+      - (app_domain | default('') | length) > 0
+      - (website_domain | default('') | length) > 0
+      - (docs_domain | default('') | length) > 0
+    fail_msg: >-
+      Set cloudflare_tunnel_id in inventories/<env>/…/env.yml and
+      vault_cloudflare_tunnel_credentials (tunnel JSON) in inventories/<env>/vault.yml.
+      Create the tunnel once: cloudflared tunnel create cleantask-<env>
+    quiet: true
+
+- name: Cloudflare package signing key
+  get_url:
+    url: https://pkg.cloudflare.com/cloudflare-main.gpg
+    dest: /usr/share/keyrings/cloudflare-main.gpg
+    mode: "0644"
+
+- name: Cloudflare apt repository
+  copy:
+    dest: /etc/apt/sources.list.d/cloudflared.list
+    content: >-
+      deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg]
+      https://pkg.cloudflare.com/cloudflared any main
+
+- name: cloudflared package
+  apt:
+    name: cloudflared
+    state: present
+    update_cache: true
+
+- name: Credentials directory
+  file:
+    path: /etc/cloudflared
+    state: directory
+    mode: "0700"
+
+- name: Tunnel credentials JSON
+  copy:
+    content: "{{ vault_cloudflare_tunnel_credentials }}"
+    dest: "/etc/cloudflared/{{ cloudflare_tunnel_id }}.json"
+    mode: "0600"
+  no_log: true
+  notify: restart cloudflared
+
+- name: Tunnel configuration
+  template:
+    src: config.yml.j2
+    dest: /etc/cloudflared/config.yml
+    mode: "0644"
+  notify: restart cloudflared
+
+- name: Install systemd unit (once)
+  command: cloudflared --config /etc/cloudflared/config.yml service install
+  args:
+    creates: /etc/systemd/system/cloudflared.service
+
+- name: cloudflared running
+  systemd:
+    name: cloudflared
+    state: started
+    enabled: true
+    daemon_reload: true

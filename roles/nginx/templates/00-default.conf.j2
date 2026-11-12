@@ -1,0 +1,6 @@
+# Unknown Host → close (no banner).
+server {
+    listen {{ nginx_listen }} default_server;
+    server_name _;
+    return 444;
+}

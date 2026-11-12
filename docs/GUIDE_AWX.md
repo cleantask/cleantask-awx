@@ -302,7 +302,13 @@ Prod plus tard : `app_version: main`. Override ponctuel : `-e version=<tag|sha>`
 `GUNICORN_WORKERS` : staging = **3** ; prod CPX42 = **8**  
 (voir `cleantask` → `docs/Infrastructure/PERF_TEST_CPX42.md`).
 
-nginx + Cloudflare Tunnel = **étape suivante** (pas encore dans ce job).
+### 3.6 Nginx + Cloudflare Tunnel (`tunnel_setup.yml`)
+
+Après `deploy-staging` (app sur `:8000`) : créer le tunnel + routes DNS, vault, puis job  
+`tunnel-setup-staging`.
+
+Procédure complète (différences yeoki, hostnames, SSL, vérifs, prod) :  
+[`CLOUDFLARE_TUNNEL.md`](CLOUDFLARE_TUNNEL.md).
 
 ---
 
@@ -311,6 +317,7 @@ nginx + Cloudflare Tunnel = **étape suivante** (pas encore dans ce job).
 | Secret | Où |
 |---|---|
 | Postgres, Django, Redis, Outlook, deploy key app… | `inventories/<env>/.../vault.yml` (`!vault`) + credential `vault-cleantask` |
+| JSON credentials Cloudflare Tunnel | `vault_cloudflare_tunnel_credentials` (+ `cloudflare_tunnel_id` en inventaire) |
 | SSH serveurs | AWX `ssh-cleantask` seulement |
 | Clone du dépôt **Ansible** | AWX `git-cleantask-awx` seulement |
 | Clone du dépôt **application** | clé dans `vault_app_git_deploy_key` (sur le serveur) |
