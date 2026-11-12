@@ -123,12 +123,23 @@
         and (app_marker_slurp.content | b64decode | trim) == app_git_sha.stdout
       }}
 
-# Build DATABASE_URL outside the template so urlencode / secrets stay out of
-# Jinja defaults (angle brackets in default() break AWX templating).
+# Encode the DB password without Jinja urlencode (missing / broken in some AWX EEs).
+- name: URL-encode Postgres password
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - import urllib.parse, os; print(urllib.parse.quote(os.environ["P"], safe=""))
+  environment:
+    P: "{{ vault_pg_password }}"
+  register: app_pg_password_encoded
+  changed_when: false
+  no_log: true
+
 - name: Build DATABASE_URL
   set_fact:
     app_database_url: >-
-      postgres://{{ pg_user }}:{{ vault_pg_password | urlencode }}@db.internal:5432/{{ pg_database }}
+      postgres://{{ pg_user }}:{{ app_pg_password_encoded.stdout }}@db.internal:5432/{{ pg_database }}
   no_log: true
 
 - name: Application environment file
