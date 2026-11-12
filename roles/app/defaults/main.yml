@@ -18,3 +18,9 @@ app_health_url: http://127.0.0.1:8000/core/health/
 app_health_host_header: localhost
 app_deploy_marker: .deployed
 app_git_ssh_host_alias: github.com-cleantask
+
+# .env non-secret defaults (avoid "<…>" inside Jinja default() — it breaks templating)
+app_default_from_email: "CleanTask <security@cleantask.co>"
+app_reply_to_email: "support@cleantask.co"
+app_django_log_level: INFO
+app_sentry_traces_sample_rate: "0.1"
