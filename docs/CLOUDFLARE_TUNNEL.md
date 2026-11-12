@@ -107,13 +107,16 @@ nginx_noindex: true
 
 ### 3.2 JSON (vault)
 
-Chiffrer le contenu du fichier `~/.cloudflared/<uuid>.json` — **jamais** en clair dans Git :
+Chiffrer le contenu du fichier `~/.cloudflared/<uuid>.json` — **jamais** en clair dans Git.
+Préférer rediriger le fichier (évite les espaces en fin de ligne au collage, qui cassent le vault) :
 
 ```bash
 cd ~/Dev/cleantask-awx
-.venv/bin/ansible-vault encrypt_string --stdin-name 'vault_cloudflare_tunnel_credentials'
-# coller le JSON entier → Entrée → Ctrl-D
+.venv/bin/ansible-vault encrypt_string \
+  --stdin-name 'vault_cloudflare_tunnel_credentials' \
+  < ~/.cloudflared/<uuid>.json
 # coller le bloc !vault dans inventories/staging/vault.yml
+# Vérifier : la dernière ligne hex n’a pas d’espaces après, fichier termine par une newline
 ```
 
 Voir aussi `inventories/staging/vault.yml.example`.
