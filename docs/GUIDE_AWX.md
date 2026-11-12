@@ -254,8 +254,8 @@ Même playbook pour la prod plus tard : `deploy-prod` → inventaire `cleantask-
 | Playbook | `deploy.yml` |
 | Informations d’identification | **deux pastilles** : Machine `ssh-cleantask` **et** Vault `vault-cleantask` |
 | Options → Élévation des privilèges | **cochée** |
-| Variables d’extra | vide, ou `version: main` (branche / tag / sha) |
-| Demander les variables au lancement | au choix (pratique pour `-e version=…`) |
+| Variables d’extra | vide (staging = branche `dev` via inventaire) |
+| Demander les variables au lancement | **décoché** (sauf pour forcer un tag / sha avec `version: …`) |
 
 **Enregistrer → Lancer.**
 
@@ -266,6 +266,9 @@ Même playbook pour la prod plus tard : `deploy-prod` → inventaire `cleantask-
 | Job AWX | **Réussi** |
 | Sur la VM : `curl -fsS -H 'Host: localhost' -H 'X-Forwarded-Proto: https' http://127.0.0.1:8000/core/health/` | HTTP **200** |
 | Sur la VM : `cd /opt/cleantask && docker compose -f docker-compose.prod.yml -f docker-compose.override.yml ps` | `web`, `worker`, `redis`, … Up |
+
+Par défaut staging déploie la branche **`dev`** (`inventories/staging/.../env.yml`).  
+Prod plus tard : `app_version: main`. Override ponctuel : `-e version=<tag|sha>`.
 
 nginx + Cloudflare Tunnel = **étape suivante** (pas encore dans ce job).
 
