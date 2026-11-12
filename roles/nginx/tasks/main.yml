@@ -26,7 +26,7 @@
     - /etc/nginx/sites-available/default
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Snippets directory
   file:
@@ -41,7 +41,7 @@
     mode: "0644"
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Shared proxy params (real_ip + forwarded headers)
   template:
@@ -50,7 +50,7 @@
     mode: "0644"
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Catch-all (unknown Host → 444)
   template:
@@ -59,7 +59,7 @@
     mode: "0644"
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: App vhost {{ app_domain }}
   template:
@@ -68,7 +68,7 @@
     mode: "0644"
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Static site roots (placeholders until static_sites role)
   file:
@@ -104,7 +104,7 @@
       root: /var/www/cleantask-website
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Docs vhost {{ docs_domain }}
   template:
@@ -117,7 +117,7 @@
       root: /var/www/cleantask-docs
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Enable sites
   file:
@@ -131,7 +131,7 @@
     - cleantask-docs.conf
   notify:
     - validate nginx
-    - reload nginx
+    - restart nginx
 
 - name: Nginx running
   systemd:

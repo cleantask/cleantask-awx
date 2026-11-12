@@ -13,10 +13,16 @@ server {
     client_max_body_size {{ nginx_client_max_body_size }};
 
     include snippets/cleantask_durcissement.conf;
-    include snippets/cleantask_proxy_params.conf;
+
+    # Visitor IP: cloudflared sets CF-Connecting-IP; real_ip makes
+    # $remote_addr the client so Django / axes see it (TRUST_PROXY_HEADERS).
+    real_ip_header CF-Connecting-IP;
+    set_real_ip_from 127.0.0.1;
+    set_real_ip_from ::1;
 
     # Django Channels WebSockets
     location /ws/ {
+        include snippets/cleantask_proxy_params.conf;
         proxy_pass http://cleantask_app;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -25,6 +31,7 @@ server {
 
     # App + WhiteNoise /static/ + tenant /media/ (all via Django)
     location / {
+        include snippets/cleantask_proxy_params.conf;
         proxy_pass http://cleantask_app;
         proxy_set_header Connection "";
         proxy_read_timeout 120s;

@@ -1,16 +1,13 @@
 # Shared proxy headers for CleanTask → Docker web (127.0.0.1:8000).
-# Visitor IP: cloudflared sets CF-Connecting-IP; real_ip makes $remote_addr
-# the client so Django / axes see it (TRUST_PROXY_HEADERS=True).
-
-real_ip_header CF-Connecting-IP;
-set_real_ip_from 127.0.0.1;
-set_real_ip_from ::1;
+# Include this INSIDE each proxy location: any proxy_set_header in a
+# location clears server-level proxy_set_header inheritance (Host would
+# become the upstream name, e.g. cleantask_app → Django DisallowedHost).
 
 proxy_http_version 1.1;
 proxy_set_header Host $host;
 proxy_set_header X-Real-IP $remote_addr;
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-# Edge is always HTTPS (Cloudflare Tunnel); nginx itself speaks plain HTTP.
+# Cloudflare Tunnel terminates HTTPS; nginx speaks plain HTTP locally.
 proxy_set_header X-Forwarded-Proto https;
 proxy_set_header X-Forwarded-Host $host;
 proxy_redirect off;

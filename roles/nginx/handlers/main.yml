@@ -1,8 +1,11 @@
 ---
+# restart (not reload): switching from the package default listen *:80 to
+# 127.0.0.1:80 fails on reload (EADDRINUSE on the old wildcard socket) and
+# leaves the Ubuntu welcome page serving forever while the job looks green.
 - name: validate nginx
   command: nginx -t
 
-- name: reload nginx
+- name: restart nginx
   systemd:
     name: nginx
-    state: reloaded
+    state: restarted
