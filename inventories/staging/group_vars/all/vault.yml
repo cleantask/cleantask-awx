@@ -112,6 +112,3 @@ vault_outlook_client_secret_expires_at: !vault |
           3166303032326339630a346561316438373438643233633462656437636534623466316636633130
           3134
 
-ault_postmark_server_token: A_RENSEIGNER
-vault_gmail_client_id: A_RENSEIGNER
-vault_gmail_client_secret: A_RENSEIGNER
