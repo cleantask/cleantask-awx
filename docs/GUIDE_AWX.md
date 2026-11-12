@@ -50,14 +50,26 @@ Pour chaque clé : prendre la valeur dans `~/Dev/cleantask/.env`, puis :
 
 | Clé vault | Source `.env` | Obligatoire |
 |---|---|---|
-| `vault_django_secret_key` | `SECRET_KEY` | oui |
-| `vault_django_secret_key_fallbacks` | `SECRET_KEY_FALLBACKS` | non (vide si jamais rotaté) |
-| `vault_field_encryption_salt` | `FIELD_ENCRYPTION_SALT` | oui |
-| `vault_redis_password` | `REDIS_PASSWORD` (ou `openssl rand -hex 32` neuf) | oui |
-| `vault_redis_cache_password` | `REDIS_CACHE_PASSWORD` (ou autre `rand`) | oui |
-| `vault_outlook_client_id` | `OUTLOOK_CLIENT_ID` | oui (boot production) |
-| `vault_outlook_client_secret` | `OUTLOOK_CLIENT_SECRET` | oui |
-| `vault_outlook_client_secret_expires_at` | `OUTLOOK_CLIENT_SECRET_EXPIRES_AT` | oui (`YYYY-MM-DD`) |
+| `vault_django_secret_key` | `SECRET_KEY` | oui (boot) |
+| `vault_django_secret_key_fallbacks` | `SECRET_KEY_FALLBACKS` | non |
+| `vault_field_encryption_salt` | `FIELD_ENCRYPTION_SALT` | oui (boot) |
+| `vault_redis_password` | `REDIS_PASSWORD` ou `openssl rand -hex 32` | oui (boot) |
+| `vault_redis_cache_password` | `REDIS_CACHE_PASSWORD` ou autre `rand` | oui (boot) |
+| `vault_outlook_client_id` | `OUTLOOK_CLIENT_ID` | oui (boot) |
+| `vault_outlook_client_secret` | `OUTLOOK_CLIENT_SECRET` | oui (boot) |
+| `vault_outlook_client_secret_expires_at` | `OUTLOOK_CLIENT_SECRET_EXPIRES_AT` | oui |
+| `vault_postmark_server_token` | `POSTMARK_SERVER_TOKEN` | recommandé |
+| `vault_gmail_client_id` | `GMAIL_CLIENT_ID` | recommandé |
+| `vault_gmail_client_secret` | `GMAIL_CLIENT_SECRET` | recommandé |
+| `vault_turnstile_secret_key` | `TURNSTILE_SECRET_KEY` | recommandé |
+| `vault_stripe_secret_key` | `STRIPE_SECRET_KEY` | recommandé |
+| `vault_stripe_webhook_secret` | `STRIPE_WEBHOOK_SECRET` | recommandé |
+| `vault_cbeapi_api_key` | `CBEAPI_API_KEY` | recommandé |
+| `vault_assistant_openrouter_api_key` | `ASSISTANT_OPENROUTER_API_KEY` | recommandé |
+
+Clés **publiques** / non secrètes → `inventories/staging/group_vars/all/env.yml`  
+(Turnstile site key, Stripe publishable + price IDs, From/Reply, assistant model…).  
+`DATABASE_URL` / `SITE_URL` / `ALLOWED_HOSTS` : générés par le rôle (pas le `.env` local).
 
 À la rotation du secret Entra : re-chiffrer secret + date, commit, `deploy-staging`.
 

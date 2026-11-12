@@ -22,5 +22,23 @@ app_git_ssh_host_alias: github.com-cleantask
 # .env non-secret defaults (avoid "<…>" inside Jinja default() — it breaks templating)
 app_default_from_email: "CleanTask <security@cleantask.co>"
 app_reply_to_email: "support@cleantask.co"
+app_admin_upgrade_email: "admin@cleantask.co"
+app_book_a_call_url: "mailto:admin@cleantask.co"
 app_django_log_level: INFO
 app_sentry_traces_sample_rate: "0.1"
+app_gmail_inbox_scopes_enabled: "False"
+app_turnstile_enabled: "True"
+app_company_lookup_provider: cbeapi
+app_company_lookup_timeout: 8
+app_cbeapi_base_url: "https://cbeapi.be/api"
+app_cbeapi_lang: fr
+app_assistant_llm_provider: mock
+app_document_ai_provider: mock
+app_assistant_llm_timeout: 60
+app_assistant_max_tool_loops: 4
+app_assistant_max_rows_per_tool: 50
+app_assistant_user_hourly_quota: 30
+app_assistant_openrouter_base_url: "https://openrouter.ai/api/v1"
+app_assistant_openrouter_zdr: "true"
+app_assistant_azure_api_version: "2024-10-21"
+app_assistant_bedrock_region: "eu-central-1"
