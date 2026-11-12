@@ -72,8 +72,18 @@ Pour chaque clé : prendre la valeur dans `~/Dev/cleantask/.env`, puis :
 | `vault_cbeapi_api_key` | `CBEAPI_API_KEY` | recommandé |
 | `vault_assistant_openrouter_api_key` | `ASSISTANT_OPENROUTER_API_KEY` | recommandé |
 
-Clés **publiques** / non secrètes → `inventories/staging/group_vars/all/env.yml`  
-(Turnstile site key, Stripe publishable + price IDs, From/Reply, assistant model…).  
+#### Vault vs inventaire (Turnstile / Stripe)
+
+| `.env` | Vault (`vault_*`) | Inventaire (`env.yml`) |
+|---|---|---|
+| `TURNSTILE_SECRET_KEY` | `vault_turnstile_secret_key` | — |
+| `TURNSTILE_SITE_KEY` | — | `app_turnstile_site_key` (déjà rempli) |
+| `STRIPE_SECRET_KEY` | `vault_stripe_secret_key` | — |
+| `STRIPE_WEBHOOK_SECRET` | `vault_stripe_webhook_secret` | — |
+| `STRIPE_PUBLISHABLE_KEY` | — | `app_stripe_publishable_key` (déjà rempli) |
+| `STRIPE_PRICE_*` | — | `app_stripe_price_*` (déjà rempli) |
+
+Autres non-secrets (From/Reply, modèle assistant…) → aussi `env.yml`.  
 `DATABASE_URL` / `SITE_URL` / `ALLOWED_HOSTS` : générés par le rôle (pas le `.env` local).
 
 À la rotation du secret Entra : re-chiffrer secret + date, commit, `deploy-staging`.
