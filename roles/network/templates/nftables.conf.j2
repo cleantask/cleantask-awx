@@ -1,0 +1,36 @@
+#!/usr/sbin/nft -f
+# CleanTask host firewall.
+#
+# IMPORTANT: do NOT `flush ruleset`. Docker (and containerd) install their own
+# nftables/iptables rules; wiping them cuts container networking until Docker
+# is restarted, and races with every compose up.
+#
+# We only manage table inet cleantask. `destroy` replaces it idempotently
+# without touching Docker's tables. Default INPUT policy stays ACCEPT.
+
+destroy table inet cleantask
+table inet cleantask {
+  chain input {
+    type filter hook input priority 0; policy accept;
+
+    ct state established,related accept
+    iif "lo" accept
+
+{% if admin_ips | length > 0 %}
+    # SSH restricted to admin IPs; drop the rest
+    ip saddr { {{ admin_ips | join(', ') }} } tcp dport 22 ct state new accept
+    tcp dport 22 ct state new drop
+{% endif %}
+
+    # PostgreSQL: allow only from Docker networks (host-gateway / bridge).
+    # Reject from the LAN / public interfaces — pg_hba is the second line.
+    ip saddr { 172.16.0.0/12 } tcp dport 5432 ct state new accept
+    tcp dport 5432 ct state new reject with icmpx type admin-prohibited
+
+    # No public 80/443: traffic comes through the Cloudflare Tunnel (cloudflared).
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy accept;
+  }
+}

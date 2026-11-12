@@ -1,0 +1,12 @@
+---
+- import_tasks: base.yml
+
+- name: Application server packages
+  apt:
+    name:
+      - git
+      - python3-venv
+      - python3-pip
+      - python3-psycopg2
+      - nginx
+    state: present

@@ -1,0 +1,26 @@
+# Local-only directories (never push)
+/awx-yeoki/
+
+# Local Ansible / Python
+.venv/
+.ansible/
+*.retry
+__pycache__/
+*.pyc
+
+# Galaxy installs (AWX / ansible-galaxy reinstall from requirements.yml)
+collections/*
+!collections/requirements.yml
+
+# Local plaintext drafts only — the real vault.yml uses !vault blocks and is
+# committed. Never commit a copy with cleartext secrets.
+group_vars/all/vault.yml.local
+*.vault
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

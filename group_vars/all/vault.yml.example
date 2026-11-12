@@ -1,0 +1,13 @@
+---
+# Secrets — each value encrypted with ansible-vault encrypt_string (not the
+# whole file). See docs/GUIDE_AWX.md §3 « Chiffrer les secrets ».
+#
+# Workflow:
+#   openssl rand -base64 24
+#   .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' '…'
+#   # paste the YAML block below, replacing A_RENSEIGNER
+#
+# The vault password (the one encrypt_string asks for) goes in the AWX
+# credential vault-cleantask — never in Git.
+
+vault_pg_password: A_RENSEIGNER

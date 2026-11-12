@@ -1,0 +1,9 @@
+# Managed by Ansible (roles/postgresql). Do not edit by hand.
+# TYPE  DATABASE  USER  ADDRESS  METHOD
+local   all       postgres            peer
+local   all       all                 peer
+host    all       all   127.0.0.1/32  scram-sha-256
+host    all       all   ::1/128       scram-sha-256
+{% for cidr in pg_docker_cidrs %}
+host    {{ pg_database }}  {{ pg_user }}  {{ cidr }}  scram-sha-256
+{% endfor %}

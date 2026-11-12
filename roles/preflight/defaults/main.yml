@@ -1,0 +1,3 @@
+---
+preflight_check_disk: true
+preflight_check_memory: true

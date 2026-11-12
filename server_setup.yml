@@ -1,0 +1,25 @@
+---
+# Configure the server itself: base system, firewall, Docker, PostgreSQL.
+# Does not deploy the CleanTask application (see deploy.yml, later).
+#
+# Usage (from this directory, with the project venv):
+#   .venv/bin/ansible-playbook server_setup.yml
+#
+# Take a Proxmox snapshot before the first run on a new VM.
+
+- hosts: app_servers
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  force_handlers: true
+
+  pre_tasks:
+    - name: Preflight checks before touching anything
+      import_role:
+        name: preflight
+
+  tasks:
+    - import_role: {name: common}
+    - import_role: {name: network}
+    - import_role: {name: docker}
+    - import_role: {name: postgresql}

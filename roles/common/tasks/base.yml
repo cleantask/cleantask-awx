@@ -1,0 +1,55 @@
+---
+# Base layer of every server (app today, etcd arbiter later).
+- name: Base packages
+  apt:
+    name:
+      - nftables
+      - fail2ban
+      - unattended-upgrades
+      - needrestart
+      - rsync
+      - curl
+      - ca-certificates
+      - gnupg
+      - acl
+    state: present
+    update_cache: true
+
+- name: unattended-upgrades — never touch PostgreSQL or reboot on its own
+  copy:
+    dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
+    content: |
+      Unattended-Upgrade::Package-Blacklist { "postgresql-"; };
+      Unattended-Upgrade::Automatic-Reboot "false";
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Current timezone
+  command: timedatectl show -p Timezone --value
+  register: common_timezone
+  changed_when: false
+
+- name: Timezone {{ server_timezone }}
+  command: "timedatectl set-timezone {{ server_timezone }}"
+  when: common_timezone.stdout | trim != server_timezone
+  notify: reload timezone
+
+- name: fail2ban running
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+
+- name: SSH hardening
+  template:
+    src: 00-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/00-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - validate sshd
+    - reload ssh
+
+- meta: flush_handlers

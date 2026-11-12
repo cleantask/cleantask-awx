@@ -1,0 +1,10 @@
+---
+- name: restart postgresql
+  systemd:
+    name: "postgresql@{{ pg_version }}-main"
+    state: restarted
+
+- name: reload postgresql
+  systemd:
+    name: "postgresql@{{ pg_version }}-main"
+    state: reloaded

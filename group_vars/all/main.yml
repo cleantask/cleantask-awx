@@ -1,0 +1,34 @@
+---
+# Settings shared by staging and prod. Environment-specific values live in
+# inventories/<env>/group_vars/all/env.yml — never duplicate a key here.
+
+ansible_pipelining: true
+
+server_timezone: Europe/Brussels
+
+# PostgreSQL (standalone for now; Patroni later).
+pg_version: 16
+pg_database: cleantask
+pg_user: cleantask
+# listen on loopback + Docker bridge gateway; pg_hba restricts who connects.
+pg_listen_addresses: "localhost,172.17.0.1"
+# Docker default bridge (+ custom compose networks in 172.16.0.0/12).
+pg_docker_cidrs:
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+
+# Docker Engine (pinned for reproducible installs).
+docker_edition: docker-ce
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Preflight thresholds (overridable with -e).
+preflight_disk_max_pct: 90
+preflight_mem_max_pct: 95
+
+# Placeholder marker: any host/group var still equal to this aborts preflight.
+unset_marker: A_RENSEIGNER

@@ -1,0 +1,52 @@
+---
+# Refuse to start if the inventory still has placeholders or the host is
+# too full to finish a run halfway.
+
+- name: Inventory has no A_RENSEIGNER placeholders
+  assert:
+    that:
+      - (ansible_host | default('') | string) != unset_marker
+      - (vault_pg_password | default(unset_marker) | string) != unset_marker
+      - (vault_pg_password | default('') | length) >= 16
+    fail_msg: >-
+      A required value is still {{ unset_marker }} (or vault_pg_password is
+      missing / shorter than 16 characters). Fill group_vars/all/vault.yml
+      from vault.yml.example before running server_setup.
+    quiet: true
+
+- name: Free space on / and /var
+  shell: |
+    p={{ item }}
+    [ -d "$p" ] || p=/
+    df --output=pcent "$p" | tail -1 | tr -dc '0-9'
+  register: preflight_disk
+  changed_when: false
+  loop: [/, /var]
+  when: preflight_check_disk
+
+- name: The disk has room
+  assert:
+    that: item.stdout | int <= preflight_disk_max_pct
+    fail_msg: >-
+      {{ item.item }} is {{ item.stdout }}% full on {{ inventory_hostname }}
+      (limit {{ preflight_disk_max_pct }}%).
+    quiet: true
+  loop: "{{ preflight_disk.results }}"
+  loop_control: {label: "{{ item.item }}: {{ item.stdout }}%"}
+  when: preflight_check_disk
+
+- name: Memory usage
+  shell: |
+    free | awk '/^Mem:/ { printf "%d\n", ($2 - $7) / $2 * 100 }'
+  register: preflight_mem
+  changed_when: false
+  when: preflight_check_memory
+
+- name: Memory is not saturated
+  assert:
+    that: preflight_mem.stdout | int <= preflight_mem_max_pct
+    fail_msg: >-
+      {{ preflight_mem.stdout }}% of memory used on {{ inventory_hostname }}
+      (limit {{ preflight_mem_max_pct }}%).
+    quiet: true
+  when: preflight_check_memory

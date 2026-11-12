@@ -1,0 +1,17 @@
+---
+- name: validate sshd
+  command: sshd -t
+
+- name: reload ssh
+  service:
+    name: ssh
+    state: reloaded
+
+- name: reload timezone
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - cron
+    - rsyslog
+  failed_when: false

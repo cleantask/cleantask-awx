@@ -1,0 +1,5 @@
+---
+# Staging on a home LAN has no Cloud Network. Prod sets private_network_enabled.
+private_network_enabled: false
+# Ports reachable from the private network only (empty on staging for now).
+private_tcp_ports: []

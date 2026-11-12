@@ -1,0 +1,7 @@
+---
+# Overridden by inventories/<env>/group_vars when the host is small (staging).
+pg_shared_buffers_mb: "{{ [ (ansible_memtotal_mb / 4) | int, 4096 ] | min }}"
+pg_effective_cache_size_mb: "{{ (ansible_memtotal_mb * 3 / 4) | int }}"
+pg_work_mem_mb: "{{ 4 if ansible_memtotal_mb < 8192 else 16 }}"
+pg_maintenance_work_mem_mb: "{{ [ (ansible_memtotal_mb / 16) | int, 512 ] | min }}"
+pg_max_connections: 100

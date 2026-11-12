@@ -1,0 +1,8 @@
+# Managed by Ansible (roles/postgresql). Do not edit by hand.
+listen_addresses = '{{ pg_listen_addresses }}'
+max_connections = {{ pg_max_connections }}
+shared_buffers = {{ pg_shared_buffers_mb }}MB
+effective_cache_size = {{ pg_effective_cache_size_mb }}MB
+work_mem = {{ pg_work_mem_mb }}MB
+maintenance_work_mem = {{ pg_maintenance_work_mem_mb }}MB
+password_encryption = scram-sha-256
