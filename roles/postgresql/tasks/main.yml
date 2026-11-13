@@ -19,19 +19,26 @@
   changed_when: false
   failed_when: false
 
+- name: Parse foreign major-version clusters
+  set_fact:
+    pg_foreign_majors: "{{ pg_lsclusters_json.stdout | from_json | map(attribute='version') | reject('eq', pg_version | string) | unique | list }}"
+  when: (pg_lsclusters_json.rc | default(1)) == 0
+
+- name: No foreign majors when pg_lsclusters is unavailable
+  set_fact:
+    pg_foreign_majors: []
+  when: (pg_lsclusters_json.rc | default(1)) != 0
+
 - name: Refuse when another major already owns a cluster
   assert:
     that:
-      - >-
-          ((pg_lsclusters_json.stdout | default('[]') | from_json)
-           | selectattr('version', 'ne', (pg_version | string))
-           | list | length) == 0
-          if (pg_lsclusters_json.rc | default(1)) == 0 else true
+      - pg_foreign_majors | length == 0
     fail_msg: >-
-      A PostgreSQL major other than {{ pg_version }} is already installed.
-      Installing {{ pg_version }} would land on port 5433 while the app
-      expects 5432. Use a VM without PostgreSQL, or plan pg_upgrade /
-      dump-restore then remove the old cluster by hand.
+      A PostgreSQL major other than {{ pg_version }} is already installed
+      ({{ pg_foreign_majors | join(', ') }}). Installing {{ pg_version }}
+      would land on port 5433 while the app expects 5432. Use a VM without
+      PostgreSQL, or plan pg_upgrade / dump-restore then remove the old
+      cluster by hand.
     quiet: true
 
 - name: PostgreSQL {{ pg_version }}
