@@ -1,7 +1,14 @@
-# Managed by Ansible (roles/static_sites) — same key as the app clone.
-Host {{ app_git_ssh_host_alias }}
+# Managed by Ansible (roles/static_sites) — one deploy key per GitHub repo.
+Host {{ sites_website_ssh_host_alias }}
   HostName github.com
   User git
-  IdentityFile {{ app_deploy_key_dir }}/id_ed25519
+  IdentityFile {{ sites_deploy_key_dir }}/website_ed25519
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+
+Host {{ sites_docs_ssh_host_alias }}
+  HostName github.com
+  User git
+  IdentityFile {{ sites_deploy_key_dir }}/docs_ed25519
   IdentitiesOnly yes
   StrictHostKeyChecking accept-new

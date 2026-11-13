@@ -11,7 +11,7 @@
   become: true
   become_user: "{{ ansible_user }}"
   environment:
-    GIT_SSH_COMMAND: "ssh -F {{ app_deploy_key_dir }}/config"
+    GIT_SSH_COMMAND: "ssh -F {{ sites_deploy_key_dir }}/config"
   git:
     repo: "{{ sites_repo_ssh_docs }}"
     dest: "{{ sites_src_root }}/{{ sites_docs_name }}"

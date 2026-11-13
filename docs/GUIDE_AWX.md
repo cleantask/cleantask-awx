@@ -314,10 +314,9 @@ Procédure complète (hostnames, SSL, vérifs, prod) :
 
 Après `tunnel_setup` (Nginx sert déjà les vhosts), publier les sites statiques.
 
-**Prérequis :** la même deploy key (`vault_app_git_deploy_key`) doit aussi être
-ajoutée comme **deploy key en lecture** sur les repos GitHub
-`cleantask/cleantask-website` et `cleantask/cleantask-docs`
-(une clé publique peut être enregistrée sur plusieurs dépôts).
+**Prérequis :** GitHub n’accepte **qu’une deploy key par clé publique** —
+il faut **deux clés** distinctes (`vault_website_git_deploy_key`,
+`vault_docs_git_deploy_key`), chacune en lecture seule sur son repo.
 
 | Champ | Valeur |
 |---|---|
@@ -381,7 +380,8 @@ Prod : même commande sur le serveur prod, autre email/mot de passe, URLs `app.c
 | JSON credentials Cloudflare Tunnel | `vault_cloudflare_tunnel_credentials` (+ `cloudflare_tunnel_id` en inventaire) |
 | SSH serveurs | AWX `ssh-cleantask` seulement |
 | Clone du dépôt **Ansible** | AWX `git-cleantask-awx` seulement |
-| Clone app + website + docs | même `vault_app_git_deploy_key` (pubkey deploy key sur les 3 repos) |
+| Clone app | `vault_app_git_deploy_key` |
+| Clone website / docs | `vault_website_git_deploy_key` / `vault_docs_git_deploy_key` (clés **distinctes**) |
 
 Jamais de secret en clair dans les Variables d’un modèle.
 
@@ -413,6 +413,6 @@ Jamais de secret en clair dans les Variables d’un modèle.
 - [ ] Org + 3 identifiants + projet sync vert
 - [ ] Inventaire sourcé, `ping` + `id` OK
 - [ ] Modèle `server-setup-staging` (SSH + Vault) → job **Réussi**
-- [ ] Secrets app chiffrés + deploy key sur `cleantask`, `cleantask-website`, `cleantask-docs`
+- [ ] Secrets app chiffrés + 3 deploy keys (app / website / docs)
 - [ ] Modèle `deploy-staging` → health localhost **200**
 - [ ] Modèle `deploy-sites-staging` → staging.cleantask.co + docs-staging OK

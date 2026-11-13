@@ -20,9 +20,12 @@ vault_django_secret_key_fallbacks: ""
 vault_field_encryption_salt: A_RENSEIGNER
 vault_redis_password: A_RENSEIGNER
 vault_redis_cache_password: A_RENSEIGNER
-# Read-only deploy key — add the SAME public key on cleantask, cleantask-website
-# and cleantask-docs (GitHub → Settings → Deploy keys) so deploy_sites.yml can clone.
+# Read-only deploy key for cleantask/cleantask only (GitHub → Deploy keys).
 vault_app_git_deploy_key: A_RENSEIGNER
+
+# Separate keys for static sites (GitHub forbids reusing one pubkey on two repos).
+vault_website_git_deploy_key: A_RENSEIGNER   # cleantask/cleantask-website
+vault_docs_git_deploy_key: A_RENSEIGNER      # cleantask/cleantask-docs
 
 # ── email / OAuth ─────────────────────────────────────────────────────────
 # Outlook is required for production settings to boot.

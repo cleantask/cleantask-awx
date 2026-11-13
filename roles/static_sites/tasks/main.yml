@@ -1,18 +1,19 @@
 ---
 # Build + atomic publish for website and/or docs.
 
-- name: Required domains + deploy key
+- name: Required domains + per-repo deploy keys
   assert:
     that:
       - (app_domain | default('') | length) > 0
       - (website_domain | default('') | length) > 0
       - (docs_domain | default('') | length) > 0
-      - (vault_app_git_deploy_key | default(unset_marker) | string) != unset_marker
+      - (vault_website_git_deploy_key | default(unset_marker) | string) != unset_marker
+      - (vault_docs_git_deploy_key | default(unset_marker) | string) != unset_marker
       - site in ['website', 'docs', 'all']
     fail_msg: >-
-      Set app_domain / website_domain / docs_domain, vault_app_git_deploy_key
-      (pubkey must also be a deploy key on cleantask-website and cleantask-docs),
-      and site=website|docs|all.
+      Set app/website/docs domains, vault_website_git_deploy_key and
+      vault_docs_git_deploy_key (one GitHub deploy key per repo — keys cannot
+      be reused across repositories), and site=website|docs|all.
     quiet: true
 
 - name: Resolve which sites to publish
@@ -26,8 +27,8 @@
     sites_docs_ref: "{{ docs_version | default(version | default(sites_docs_version)) }}"
     sites_app_url: "https://{{ app_domain }}"
     sites_docs_url: "https://{{ docs_domain }}"
-    sites_repo_ssh_website: "{{ sites_website_repo | regex_replace('^git@github\\.com:', 'git@' ~ app_git_ssh_host_alias ~ ':') }}"
-    sites_repo_ssh_docs: "{{ sites_docs_repo | regex_replace('^git@github\\.com:', 'git@' ~ app_git_ssh_host_alias ~ ':') }}"
+    sites_repo_ssh_website: "{{ sites_website_repo | regex_replace('^git@github\\.com:', 'git@' ~ sites_website_ssh_host_alias ~ ':') }}"
+    sites_repo_ssh_docs: "{{ sites_docs_repo | regex_replace('^git@github\\.com:', 'git@' ~ sites_docs_ssh_host_alias ~ ':') }}"
 
 - name: Parent directories
   file:
@@ -39,29 +40,38 @@
   loop:
     - "{{ sites_src_root }}"
     - "{{ sites_www_root }}"
-    - "{{ app_deploy_key_dir | dirname }}"
+    - "{{ sites_deploy_key_dir | dirname }}"
 
-- name: Deploy-key directory
+- name: Deploy-keys directory
   file:
-    path: "{{ app_deploy_key_dir }}"
+    path: "{{ sites_deploy_key_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0700"
 
-- name: Deploy key (read-only clone)
+- name: Website deploy key
   copy:
-    content: "{{ vault_app_git_deploy_key }}\n"
-    dest: "{{ app_deploy_key_dir }}/id_ed25519"
+    content: "{{ vault_website_git_deploy_key }}\n"
+    dest: "{{ sites_deploy_key_dir }}/website_ed25519"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
   no_log: true
 
-- name: SSH config for GitHub deploy key
+- name: Docs deploy key
+  copy:
+    content: "{{ vault_docs_git_deploy_key }}\n"
+    dest: "{{ sites_deploy_key_dir }}/docs_ed25519"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+
+- name: SSH config for site deploy keys
   template:
     src: ssh_config.j2
-    dest: "{{ app_deploy_key_dir }}/config"
+    dest: "{{ sites_deploy_key_dir }}/config"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
