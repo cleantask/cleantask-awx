@@ -13,6 +13,77 @@
   args:
     creates: /etc/apt/sources.list.d/pgdg.list
 
+- name: List PostgreSQL clusters
+  command: pg_lsclusters --json
+  register: pg_lsclusters_json
+  changed_when: false
+  failed_when: false
+
+- name: Parse cluster list
+  set_fact:
+    pg_clusters: "{{ (pg_lsclusters_json.stdout | default('[]') | from_json) if (pg_lsclusters_json.rc | default(1)) == 0 else [] }}"
+    pg_other_clusters: >-
+      {{ (pg_lsclusters_json.stdout | default('[]') | from_json)
+         | selectattr('version', 'ne', (pg_version | string))
+         | list
+         if (pg_lsclusters_json.rc | default(1)) == 0 else [] }}
+
+- name: Drop other major-version clusters (staging disposable)
+  command: "pg_dropcluster {{ item.version }} {{ item.cluster }} --stop"
+  loop: "{{ pg_other_clusters }}"
+  when: pg_purge_other_majors | bool
+  loop_control:
+    label: "{{ item.version }}/{{ item.cluster }}"
+
+- name: Remove packages for dropped majors
+  apt:
+    name: "postgresql-{{ item }}"
+    state: absent
+    purge: true
+  loop: "{{ pg_other_clusters | map(attribute='version') | unique | list }}"
+  when: pg_purge_other_majors | bool
+  loop_control:
+    label: "postgresql-{{ item }}"
+
+- name: Re-list clusters after purge
+  command: pg_lsclusters --json
+  register: pg_lsclusters_after_purge
+  changed_when: false
+  failed_when: false
+  when: pg_purge_other_majors | bool
+
+- name: Target clusters not on 5432 (stale side-install)
+  set_fact:
+    pg_wrong_port_clusters: >-
+      {{ (pg_lsclusters_after_purge.stdout | default('[]') | from_json)
+         | selectattr('version', 'equalto', (pg_version | string))
+         | rejectattr('port', 'equalto', '5432')
+         | list
+         if (pg_lsclusters_after_purge is defined
+             and (pg_lsclusters_after_purge.rc | default(1)) == 0)
+         else [] }}
+  when: pg_purge_other_majors | bool
+
+- name: Recreate {{ pg_version }} on port 5432 when misplaced
+  command: "pg_dropcluster {{ item.version }} {{ item.cluster }} --stop"
+  loop: "{{ pg_wrong_port_clusters | default([]) }}"
+  when: pg_purge_other_majors | bool
+  loop_control:
+    label: "{{ item.version }}/{{ item.cluster }} port {{ item.port }}"
+
+- name: Refuse when another major still holds port 5432
+  assert:
+    that:
+      - pg_other_clusters | length == 0
+    fail_msg: >-
+      PostgreSQL cluster(s) other than {{ pg_version }} are present
+      ({{ pg_other_clusters | map(attribute='version') | unique | join(', ') }}).
+      Installing {{ pg_version }} would put it on port 5433 while the app
+      expects 5432. Staging: set pg_purge_other_majors: true (destroys that
+      data). Prod: plan pg_upgrade / dump-restore, then remove the old cluster.
+    quiet: true
+  when: not (pg_purge_other_majors | bool)
+
 - name: PostgreSQL {{ pg_version }}
   apt:
     name:

@@ -178,7 +178,7 @@ all:
 | `common` | `base.yml` : paquets de base, fail2ban, durcissement SSH, `unattended-upgrades`, fuseau, synchronisation de l'heure. `main.yml` : ce qui est propre aux serveurs d'application. |
 | `network` | Pare-feu nftables et réseau privé. **Ne vide que sa propre table** : un `flush ruleset` effacerait les règles de Docker et couperait le réseau des conteneurs. |
 | `docker` | Docker Engine et le plugin Compose depuis le dépôt officiel, versions figées, rotation des logs. |
-| `postgresql` | PostgreSQL PGDG, réglages calculés à partir de la RAM, base et rôle `cleantask`, `listen_addresses` = `localhost` + passerelle Docker, `pg_hba.conf` limité au sous-réseau Docker en `scram-sha-256`. |
+| `postgresql` | PostgreSQL **18** PGDG (même majeur que le laptop / CI), réglages calculés à partir de la RAM, base et rôle `cleantask`, `listen_addresses` = `localhost` + passerelle Docker, `pg_hba.conf` limité au sous-réseau Docker en `scram-sha-256`. Staging peut purger un ancien majeur (`pg_purge_other_majors`) pour garder le port 5432. |
 | `pgbackrest` | Sauvegarde complète hebdomadaire, incrémentales quotidiennes, journaux en continu vers la Storage Box. |
 | `pgdump` | `pg_dump` quotidien chiffré `age`, envoyé sur la Storage Box puis supprimé du serveur. |
 | `media_backup` | Sauvegarde restic chiffrée des médias vers la Storage Box, rétention, vérification périodique. |
