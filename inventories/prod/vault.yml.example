@@ -17,6 +17,9 @@ vault_field_encryption_salt: A_RENSEIGNER
 vault_redis_password: A_RENSEIGNER
 vault_redis_cache_password: A_RENSEIGNER
 vault_app_git_deploy_key: A_RENSEIGNER
+# Separate keys (GitHub: one deploy-key pubkey per repo):
+vault_website_git_deploy_key: A_RENSEIGNER
+vault_docs_git_deploy_key: A_RENSEIGNER
 
 # ── email / OAuth ─────────────────────────────────────────────────────────
 # Outlook is required for production settings to boot.
