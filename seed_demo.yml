@@ -1,0 +1,21 @@
+---
+# Seed demo organisations on staging only (manage.py create_demo_data).
+# Never attach this playbook to a production inventory / job template.
+#
+# Extra vars (optional):
+#   single_org: true|false   (default false — BrightClean + SparkleHome)
+#   no_jobs: true|false      (default false)
+
+- hosts: app_servers
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  force_handlers: true
+
+  pre_tasks:
+    - name: Load per-environment vault
+      import_role:
+        name: load_vault
+
+  roles:
+    - seed_demo

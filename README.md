@@ -18,10 +18,12 @@ Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
 | `deploy.yml` | Application (Compose, migrate, health) |
 | `tunnel_setup.yml` | Nginx (loopback) + Cloudflare Tunnel |
 | `deploy_sites.yml` | Marketing site + docs (static, Node build in Docker) |
+| `seed_demo.yml` | Staging-only demo orgs (`create_demo_data`) |
 
-After first `deploy` + tunnel: create the platform admin by hand  
-(`createsuperuser` on the VM) — see [`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md) § 3.8.  
-No default login is seeded. Then `deploy-sites-staging` for website/docs.
+After first `deploy` + tunnel: either `seed-demo-staging` (BrightClean /
+SparkleHome + platform admin) or a manual `createsuperuser` — see
+[`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md) § 3.8–3.9. Then `deploy-sites-staging`
+for website/docs.
 
 ## Local usage (laptop only — not the server)
 

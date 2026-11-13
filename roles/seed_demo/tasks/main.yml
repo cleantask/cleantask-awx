@@ -1,0 +1,82 @@
+---
+# Run create_demo_data once on the live Compose stack (staging only).
+# CLEANTASK_ALLOW_DEMO_SEED is injected on this process only — not written to .env.
+
+- name: Refuse demo seed outside staging
+  assert:
+    that:
+      - allow_demo_seed | bool
+      - (env_name | default('')) == 'staging'
+    fail_msg: >-
+      Demo seed is staging-only. Set allow_demo_seed: true and env_name: staging
+      in the inventory (never on prod). Playbook: seed_demo.yml.
+    quiet: true
+
+- name: Require vault_demo_password
+  assert:
+    that:
+      - (vault_demo_password | default('') | length) > 0
+    fail_msg: >-
+      Encrypt vault_demo_password into inventories/staging/vault.yml
+      (shared password for every demo account created by create_demo_data).
+    quiet: true
+
+- name: Application tree must already be deployed
+  stat:
+    path: "{{ app_root }}/{{ app_compose_file }}"
+  register: seed_compose_file
+
+- name: Fail when the app is not on disk yet
+  assert:
+    that:
+      - seed_compose_file.stat.exists | default(false)
+    fail_msg: >-
+      {{ app_root }} has no {{ app_compose_file }}. Run deploy-staging first.
+    quiet: true
+
+- name: Build create_demo_data argv
+  set_fact:
+    seed_demo_cmd:
+      - docker
+      - compose
+      - -f
+      - "{{ app_compose_file }}"
+      - -f
+      - "{{ app_compose_override }}"
+      - run
+      - --rm
+      - --no-deps
+      - -e
+      - CLEANTASK_ALLOW_DEMO_SEED
+      - -e
+      - CLEANTASK_DEMO_PASSWORD
+      - web
+      - python
+      - manage.py
+      - create_demo_data
+      - "{{ '--single-org' if (single_org | bool) else '' }}"
+      - "{{ '--no-jobs' if (no_jobs | bool) else '' }}"
+
+- name: Drop empty optional flags
+  set_fact:
+    seed_demo_cmd: "{{ seed_demo_cmd | select('string') | reject('equalto', '') | list }}"
+
+- name: Seed demo data (one-shot ALLOW_DEMO_SEED)
+  become: true
+  become_user: "{{ ansible_user }}"
+  command:
+    argv: "{{ seed_demo_cmd }}"
+  args:
+    chdir: "{{ app_root }}"
+  environment:
+    CLEANTASK_ALLOW_DEMO_SEED: "1"
+    CLEANTASK_DEMO_PASSWORD: "{{ vault_demo_password }}"
+  register: seed_demo_run
+  changed_when: >-
+    'SUCCESS' in (seed_demo_run.stdout | default(''))
+    or 'Created' in (seed_demo_run.stdout | default(''))
+  failed_when: seed_demo_run.rc != 0
+
+- name: Show create_demo_data output
+  debug:
+    msg: "{{ seed_demo_run.stdout_lines | default([]) }}"

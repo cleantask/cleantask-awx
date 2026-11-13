@@ -1,0 +1,11 @@
+---
+# Staging-only demo seed. Inventory must set allow_demo_seed: true.
+allow_demo_seed: false
+
+# Optional filters (override with AWX extra vars).
+single_org: false
+no_jobs: false
+
+app_root: /opt/cleantask
+app_compose_file: docker-compose.prod.yml
+app_compose_override: docker-compose.override.yml

@@ -336,18 +336,60 @@ Le rôle build dans un conteneur Node jetable, publie sous
 | `https://staging.cleantask.co/` | site vitrine |
 | `https://docs-staging.cleantask.co/` | documentation |
 
-### 3.8 Premier login — créer le platform admin (obligatoire)
+### 3.8 Seed démo staging (`seed_demo.yml`) — recommandé
 
-**`deploy.yml` et `tunnel_setup.yml` ne créent aucun utilisateur.**  
-Après un serveur neuf, la base a **0 compte** : il n’existe **aucun** mot de passe
-staging/prod magique, ni seed démo automatique.
+**Staging seulement.** Ne pas créer de job prod avec ce playbook.
 
-Sans cette étape, `https://app-staging.cleantask.co/login/` n’accepte personne.
+Après `deploy-staging`, peupler BrightClean / SparkleHome via
+`manage.py create_demo_data` (même script que le laptop). Le rôle injecte
+`CLEANTASK_ALLOW_DEMO_SEED=1` **uniquement** sur le `compose run` (pas dans
+le `.env` durable). Sans `--reset` : orgs déjà présentes = skip ; comptes
+existants jamais écrasés.
 
-#### Une fois, en SSH sur la VM
+#### Prérequis
+
+- [ ] `deploy-staging` déjà **Réussi**
+- [ ] App `cleantask` sur la branche déployée contient le gate
+  `CLEANTASK_ALLOW_DEMO_SEED` (sinon `DEV-ONLY` / `DEBUG=False`)
+- [ ] `vault_demo_password` chiffré dans `inventories/staging/vault.yml`
+  (mot de passe commun à tous les comptes démo)
 
 ```bash
-ssh ubuntu@192.168.10.115          # IP staging — voir inventories/staging/hosts.yml
+cd ~/Dev/cleantask-awx
+.venv/bin/ansible-vault encrypt_string --stdin-name 'vault_demo_password'
+# coller le !vault dans inventories/staging/vault.yml → commit / push → sync AWX
+```
+
+#### Créer le modèle
+
+| Champ | Valeur |
+|---|---|
+| Nom | `seed-demo-staging` |
+| Inventaire | `cleantask-staging` |
+| Projet | `cleantask-awx` |
+| Playbook | `seed_demo.yml` |
+| Identifiants | Machine + Vault |
+| Élévation | **cochée** |
+| Extra vars (optionnel) | `single_org: true` / `no_jobs: true` |
+| Demander au lancement | optionnel (pour `single_org` / `no_jobs`) |
+
+**Lancer.** Sortie AWX : emails créés ; mot de passe = `vault_demo_password`.
+
+| URL | Qui |
+|---|---|
+| `https://app-staging.cleantask.co/login/` | emails démo (owners, managers, cleaners) |
+| `https://app-staging.cleantask.co/platform/` | platform admin seedé (si l’email n’existait pas) |
+
+`--reset` (wipe total) **n’est pas** exposé ici : réservé au laptop
+(`DEBUG` + `CLEANTASK_DISPOSABLE_*`). Pour vider staging : snapshot Proxmox
++ recreate DB / redeploy, ou procédure manuelle hors AWX.
+
+### 3.9 Premier login prod (ou staging sans seed) — `createsuperuser`
+
+**`deploy.yml` ne crée aucun utilisateur.** Prod n’a **pas** de seed démo.
+
+```bash
+ssh ubuntu@…          # VM cible
 cd /opt/cleantask
 sudo docker compose \
   -f docker-compose.prod.yml \
@@ -355,20 +397,13 @@ sudo docker compose \
   exec web python manage.py createsuperuser
 ```
 
-Saisir email + mot de passe (les stocker dans le gestionnaire de mots de passe de l’équipe).
-
-#### Connexion
-
 | URL | Qui |
 |---|---|
-| `https://app-staging.cleantask.co/login/` | login |
-| `https://app-staging.cleantask.co/platform/` | **platform admin** (superuser) |
-| Office `/office/…` | après création d’une org / owner (plateforme ou signup) — **pas** seedé non plus |
+| `https://app.cleantask.co/login/` (prod) | compte créé à la main |
+| `https://app.cleantask.co/platform/` | platform admin (superuser) |
 
-Prod : même commande sur le serveur prod, autre email/mot de passe, URLs `app.cleantask.co`.
-
-> Ne jamais committer ce mot de passe dans Git / le vault Ansible (ce n’est pas un secret
-> d’infra ; c’est un compte applicatif créé à la main).
+> Compte applicatif créé à la main : ne pas le mettre dans le vault Ansible
+> (sauf `vault_demo_password` pour le seed staging § 3.8).
 
 ---
 
@@ -382,6 +417,7 @@ Prod : même commande sur le serveur prod, autre email/mot de passe, URLs `app.c
 | Clone du dépôt **Ansible** | AWX `git-cleantask-awx` seulement |
 | Clone app | `vault_app_git_deploy_key` |
 | Clone website / docs | `vault_website_git_deploy_key` / `vault_docs_git_deploy_key` (clés **distinctes**) |
+| Mot de passe comptes démo staging | `vault_demo_password` (job `seed-demo-staging` seulement) |
 
 Jamais de secret en clair dans les Variables d’un modèle.
 
@@ -416,3 +452,4 @@ Jamais de secret en clair dans les Variables d’un modèle.
 - [ ] Secrets app chiffrés + 3 deploy keys (app / website / docs)
 - [ ] Modèle `deploy-staging` → health localhost **200**
 - [ ] Modèle `deploy-sites-staging` → staging.cleantask.co + docs-staging OK
+- [ ] `vault_demo_password` + modèle `seed-demo-staging` (optionnel mais utile)

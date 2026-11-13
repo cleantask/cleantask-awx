@@ -27,6 +27,9 @@ vault_app_git_deploy_key: A_RENSEIGNER
 vault_website_git_deploy_key: A_RENSEIGNER   # cleantask/cleantask-website
 vault_docs_git_deploy_key: A_RENSEIGNER      # cleantask/cleantask-docs
 
+# Staging demo seed only (seed_demo.yml → CLEANTASK_DEMO_PASSWORD). Not used in prod.
+vault_demo_password: A_RENSEIGNER
+
 # ── email / OAuth ─────────────────────────────────────────────────────────
 # Outlook is required for production settings to boot.
 vault_outlook_client_id: A_RENSEIGNER
