@@ -14,7 +14,7 @@ AWX : machine `ansible` (`192.168.10.114`).
 |---|---|
 | `cleantask/cleantask-awx` | **AWX** (playbooks) |
 | `cleantask/cleantask` | Le serveur (rôle `app` / `deploy.yml`) |
-| `cleantask/cleantask-website` / `cleantask-docs` | Le serveur (plus tard) |
+| `cleantask/cleantask-website` / `cleantask-docs` | Le serveur (`deploy_sites.yml`) |
 
 ---
 
@@ -307,8 +307,69 @@ Prod plus tard : `app_version: main`. Override ponctuel : `-e version=<tag|sha>`
 Après `deploy-staging` (app sur `:8000`) : créer le tunnel + routes DNS, vault, puis job  
 `tunnel-setup-staging`.
 
-Procédure complète (différences yeoki, hostnames, SSL, vérifs, prod) :  
+Procédure complète (hostnames, SSL, vérifs, prod) :  
 [`CLOUDFLARE_TUNNEL.md`](CLOUDFLARE_TUNNEL.md).
+
+### 3.7 Site vitrine + documentation (`deploy_sites.yml`)
+
+Après `tunnel_setup` (Nginx sert déjà les vhosts), publier les sites statiques.
+
+**Prérequis :** la même deploy key (`vault_app_git_deploy_key`) doit aussi être
+ajoutée comme **deploy key en lecture** sur les repos GitHub
+`cleantask/cleantask-website` et `cleantask/cleantask-docs`
+(une clé publique peut être enregistrée sur plusieurs dépôts).
+
+| Champ | Valeur |
+|---|---|
+| Nom | `deploy-sites-staging` |
+| Inventaire | `cleantask-staging` |
+| Projet | `cleantask-awx` |
+| Playbook | `deploy_sites.yml` |
+| Identifiants | Machine + Vault |
+| Élévation | **cochée** |
+| Extra vars (optionnel) | `site: website` / `docs` / `all` (défaut) |
+
+Le rôle build dans un conteneur Node jetable, publie sous
+`/var/www/cleantask-website|docs/releases/<sha>` puis bascule `current`.
+
+| URL | Attendu |
+|---|---|
+| `https://staging.cleantask.co/` | site vitrine |
+| `https://docs-staging.cleantask.co/` | documentation |
+
+### 3.8 Premier login — créer le platform admin (obligatoire)
+
+**`deploy.yml` et `tunnel_setup.yml` ne créent aucun utilisateur.**  
+Après un serveur neuf, la base a **0 compte** : il n’existe **aucun** mot de passe
+staging/prod magique, ni seed démo automatique.
+
+Sans cette étape, `https://app-staging.cleantask.co/login/` n’accepte personne.
+
+#### Une fois, en SSH sur la VM
+
+```bash
+ssh ubuntu@192.168.10.115          # IP staging — voir inventories/staging/hosts.yml
+cd /opt/cleantask
+sudo docker compose \
+  -f docker-compose.prod.yml \
+  -f docker-compose.override.yml \
+  exec web python manage.py createsuperuser
+```
+
+Saisir email + mot de passe (les stocker dans le gestionnaire de mots de passe de l’équipe).
+
+#### Connexion
+
+| URL | Qui |
+|---|---|
+| `https://app-staging.cleantask.co/login/` | login |
+| `https://app-staging.cleantask.co/platform/` | **platform admin** (superuser) |
+| Office `/office/…` | après création d’une org / owner (plateforme ou signup) — **pas** seedé non plus |
+
+Prod : même commande sur le serveur prod, autre email/mot de passe, URLs `app.cleantask.co`.
+
+> Ne jamais committer ce mot de passe dans Git / le vault Ansible (ce n’est pas un secret
+> d’infra ; c’est un compte applicatif créé à la main).
 
 ---
 
@@ -320,7 +381,7 @@ Procédure complète (différences yeoki, hostnames, SSL, vérifs, prod) :
 | JSON credentials Cloudflare Tunnel | `vault_cloudflare_tunnel_credentials` (+ `cloudflare_tunnel_id` en inventaire) |
 | SSH serveurs | AWX `ssh-cleantask` seulement |
 | Clone du dépôt **Ansible** | AWX `git-cleantask-awx` seulement |
-| Clone du dépôt **application** | clé dans `vault_app_git_deploy_key` (sur le serveur) |
+| Clone app + website + docs | même `vault_app_git_deploy_key` (pubkey deploy key sur les 3 repos) |
 
 Jamais de secret en clair dans les Variables d’un modèle.
 
@@ -352,5 +413,6 @@ Jamais de secret en clair dans les Variables d’un modèle.
 - [ ] Org + 3 identifiants + projet sync vert
 - [ ] Inventaire sourcé, `ping` + `id` OK
 - [ ] Modèle `server-setup-staging` (SSH + Vault) → job **Réussi**
-- [ ] Secrets app chiffrés + deploy key sur `cleantask/cleantask`
+- [ ] Secrets app chiffrés + deploy key sur `cleantask`, `cleantask-website`, `cleantask-docs`
 - [ ] Modèle `deploy-staging` → health localhost **200**
+- [ ] Modèle `deploy-sites-staging` → staging.cleantask.co + docs-staging OK

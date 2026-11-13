@@ -1,0 +1,160 @@
+---
+- name: Website source directory
+  file:
+    path: "{{ sites_src_root }}/{{ sites_website_name }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Clone or update website repo ({{ sites_website_ref }})
+  become: true
+  become_user: "{{ ansible_user }}"
+  environment:
+    GIT_SSH_COMMAND: "ssh -F {{ app_deploy_key_dir }}/config"
+  git:
+    repo: "{{ sites_repo_ssh_website }}"
+    dest: "{{ sites_src_root }}/{{ sites_website_name }}"
+    version: "{{ sites_website_ref }}"
+    force: true
+    accept_hostkey: true
+
+- name: Website commit SHA
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: git -C {{ sites_src_root }}/{{ sites_website_name }} rev-parse HEAD
+  register: sites_website_sha
+  changed_when: false
+
+- name: Website short SHA
+  set_fact:
+    sites_website_tag: "{{ sites_website_sha.stdout[:12] }}"
+    sites_website_release: "{{ sites_www_root }}/{{ sites_website_name }}/releases/{{ sites_website_sha.stdout[:12] }}"
+
+- name: Skip website if this commit is already current
+  stat:
+    path: "{{ sites_www_root }}/{{ sites_website_name }}/current"
+  register: sites_website_current_link
+
+- name: Resolve current website target
+  command: readlink -f {{ sites_www_root }}/{{ sites_website_name }}/current
+  register: sites_website_current_target
+  changed_when: false
+  failed_when: false
+  when: sites_website_current_link.stat.islnk | default(false)
+
+- name: Website already published?
+  set_fact:
+    sites_website_skip: >-
+      {{
+        (sites_website_current_target.stdout | default('')) == sites_website_release
+      }}
+
+- name: Build website CSS (Node container)
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: >-
+    docker run --rm
+    -v {{ sites_src_root }}/{{ sites_website_name }}:/src
+    -w /src
+    {{ sites_node_image }}
+    bash -lc 'npm ci && npm run build:css'
+  when: not (sites_website_skip | bool)
+
+- name: Website releases parent
+  file:
+    path: "{{ sites_www_root }}/{{ sites_website_name }}/releases"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: not (sites_website_skip | bool)
+
+- name: Remove placeholder website current (directory from nginx role)
+  file:
+    path: "{{ sites_www_root }}/{{ sites_website_name }}/current"
+    state: absent
+  when:
+    - not (sites_website_skip | bool)
+    - sites_website_current_link.stat.isdir | default(false)
+    - not (sites_website_current_link.stat.islnk | default(false))
+
+- name: Website release directory
+  file:
+    path: "{{ sites_website_release }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: not (sites_website_skip | bool)
+
+- name: Stage website files into release
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: >-
+    rsync -a --delete
+    --exclude .git
+    --exclude node_modules
+    --exclude package.json
+    --exclude package-lock.json
+    --exclude input.css
+    --exclude tailwind.config.js
+    --exclude '*.md'
+    --exclude start.sh
+    --exclude stop.sh
+    --exclude '.gitignore'
+    --exclude '*.code-workspace'
+    --exclude 'index (Copy).html'
+    --exclude index_construction.html
+    --exclude coming-soon.html
+    {{ sites_src_root }}/{{ sites_website_name }}/
+    {{ sites_website_release }}/
+  when: not (sites_website_skip | bool)
+
+- name: Inject APP_URL into website HTML
+  become: true
+  become_user: "{{ ansible_user }}"
+  shell: |
+    set -euo pipefail
+    find "{{ sites_website_release }}" -type f -name '*.html' -print0 \
+      | xargs -0 -r sed -i \
+        -e 's|__APP_URL__|{{ sites_app_url }}|g' \
+        -e 's|https://app\.cleantask\.lovelyhome\.io|{{ sites_app_url }}|g'
+  when: not (sites_website_skip | bool)
+
+- name: www-data owns website release
+  file:
+    path: "{{ sites_website_release }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    recurse: true
+  when: not (sites_website_skip | bool)
+
+- name: Atomic switch website current → {{ sites_website_tag }}
+  file:
+    src: "{{ sites_website_release }}"
+    dest: "{{ sites_www_root }}/{{ sites_website_name }}/current"
+    state: link
+    force: true
+  when: not (sites_website_skip | bool)
+
+- name: Prune old website releases (keep {{ sites_keep_releases }})
+  become: true
+  become_user: "{{ ansible_user }}"
+  shell: |
+    set -euo pipefail
+    cd "{{ sites_www_root }}/{{ sites_website_name }}/releases"
+    ls -1dt */ 2>/dev/null | tail -n +$(( {{ sites_keep_releases }} + 1 )) | xargs -r rm -rf
+  args:
+    executable: /bin/bash
+  when: not (sites_website_skip | bool)
+  changed_when: false
+
+- name: Smoke-test website via Nginx
+  uri:
+    url: http://127.0.0.1/
+    headers:
+      Host: "{{ website_domain }}"
+    status_code: 200
+    return_content: false

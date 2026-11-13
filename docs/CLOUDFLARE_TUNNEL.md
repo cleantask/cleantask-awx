@@ -161,8 +161,12 @@ Le playbook applique :
 | Job AWX | **Réussi** |
 | `cloudflared tunnel list` (poste) | 1 connexion active pour `cleantask-staging` |
 | Sur la VM : `curl -fsS -H 'Host: app-staging.cleantask.co' http://127.0.0.1/core/health/` | HTTP **200** |
-| Navigateur : `https://app-staging.cleantask.co/` | app CleanTask |
+| Navigateur : `https://app-staging.cleantask.co/` | app CleanTask (souvent redirect `/login/`) |
 | `https://staging.cleantask.co/` / docs | placeholder jusqu’au rôle `static_sites` |
+
+**Pas de compte encore** : le tunnel n’ouvre que l’app. Créer le platform admin  
+(`createsuperuser`) — voir [`GUIDE_AWX.md` § 3.8](GUIDE_AWX.md).  
+Site vitrine / docs : job `deploy-sites-staging` (`deploy_sites.yml`).
 
 Sur la VM (lecture seule) :
 

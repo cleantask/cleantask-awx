@@ -1,0 +1,137 @@
+---
+- name: Docs source directory
+  file:
+    path: "{{ sites_src_root }}/{{ sites_docs_name }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Clone or update docs repo ({{ sites_docs_ref }})
+  become: true
+  become_user: "{{ ansible_user }}"
+  environment:
+    GIT_SSH_COMMAND: "ssh -F {{ app_deploy_key_dir }}/config"
+  git:
+    repo: "{{ sites_repo_ssh_docs }}"
+    dest: "{{ sites_src_root }}/{{ sites_docs_name }}"
+    version: "{{ sites_docs_ref }}"
+    force: true
+    accept_hostkey: true
+
+- name: Docs commit SHA
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: git -C {{ sites_src_root }}/{{ sites_docs_name }} rev-parse HEAD
+  register: sites_docs_sha
+  changed_when: false
+
+- name: Docs short SHA
+  set_fact:
+    sites_docs_tag: "{{ sites_docs_sha.stdout[:12] }}"
+    sites_docs_release: "{{ sites_www_root }}/{{ sites_docs_name }}/releases/{{ sites_docs_sha.stdout[:12] }}"
+
+- name: Skip docs if this commit is already current
+  stat:
+    path: "{{ sites_www_root }}/{{ sites_docs_name }}/current"
+  register: sites_docs_current_link
+
+- name: Resolve current docs target
+  command: readlink -f {{ sites_www_root }}/{{ sites_docs_name }}/current
+  register: sites_docs_current_target
+  changed_when: false
+  failed_when: false
+  when: sites_docs_current_link.stat.islnk | default(false)
+
+- name: Docs already published?
+  set_fact:
+    sites_docs_skip: >-
+      {{
+        (sites_docs_current_target.stdout | default('')) == sites_docs_release
+      }}
+
+- name: Build Docusaurus (Node container)
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: >-
+    docker run --rm
+    -v {{ sites_src_root }}/{{ sites_docs_name }}:/src
+    -w /src
+    -e DOCS_URL={{ sites_docs_url }}
+    -e APP_URL={{ sites_app_url }}
+    {{ sites_node_image }}
+    bash -lc 'npm ci && npm run build'
+  when: not (sites_docs_skip | bool)
+
+- name: Docs releases parent
+  file:
+    path: "{{ sites_www_root }}/{{ sites_docs_name }}/releases"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: not (sites_docs_skip | bool)
+
+- name: Remove placeholder docs current (directory from nginx role)
+  file:
+    path: "{{ sites_www_root }}/{{ sites_docs_name }}/current"
+    state: absent
+  when:
+    - not (sites_docs_skip | bool)
+    - sites_docs_current_link.stat.isdir | default(false)
+    - not (sites_docs_current_link.stat.islnk | default(false))
+
+- name: Docs release directory
+  file:
+    path: "{{ sites_docs_release }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: not (sites_docs_skip | bool)
+
+- name: Stage docs build/ into release
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: >-
+    rsync -a --delete
+    {{ sites_src_root }}/{{ sites_docs_name }}/build/
+    {{ sites_docs_release }}/
+  when: not (sites_docs_skip | bool)
+
+- name: www-data owns docs release
+  file:
+    path: "{{ sites_docs_release }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    recurse: true
+  when: not (sites_docs_skip | bool)
+
+- name: Atomic switch docs current → {{ sites_docs_tag }}
+  file:
+    src: "{{ sites_docs_release }}"
+    dest: "{{ sites_www_root }}/{{ sites_docs_name }}/current"
+    state: link
+    force: true
+  when: not (sites_docs_skip | bool)
+
+- name: Prune old docs releases (keep {{ sites_keep_releases }})
+  become: true
+  become_user: "{{ ansible_user }}"
+  shell: |
+    set -euo pipefail
+    cd "{{ sites_www_root }}/{{ sites_docs_name }}/releases"
+    ls -1dt */ 2>/dev/null | tail -n +$(( {{ sites_keep_releases }} + 1 )) | xargs -r rm -rf
+  args:
+    executable: /bin/bash
+  when: not (sites_docs_skip | bool)
+  changed_when: false
+
+- name: Smoke-test docs via Nginx
+  uri:
+    url: http://127.0.0.1/
+    headers:
+      Host: "{{ docs_domain }}"
+    status_code: 200
+    return_content: false

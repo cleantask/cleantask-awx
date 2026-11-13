@@ -1,0 +1,25 @@
+---
+# Static marketing site + Docusaurus docs. Built in disposable Node
+# containers (no Node on the host). Published under /var/www/<name>/.
+
+sites_src_root: /var/lib/cleantask/src
+sites_www_root: /var/www
+sites_node_image: node:22-bookworm-slim
+sites_keep_releases: 5
+
+# Which site(s) to deploy: website | docs | all  (-e site=…)
+site: all
+
+# Repos (SSH). Same deploy key as the app if that pubkey is also registered
+# as a deploy key on these two GitHub repos.
+sites_website_repo: git@github.com:cleantask/cleantask-website.git
+sites_docs_repo: git@github.com:cleantask/cleantask-docs.git
+sites_website_version: main
+sites_docs_version: main
+
+# Reuse the app deploy-key layout (roles/app).
+app_deploy_key_dir: /var/lib/cleantask/deploy
+app_git_ssh_host_alias: github.com-cleantask
+
+sites_website_name: cleantask-website
+sites_docs_name: cleantask-docs

@@ -17,21 +17,33 @@ Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
 | `server_setup.yml` | Server only (Docker, PostgreSQL, …) |
 | `deploy.yml` | Application (Compose, migrate, health) |
 | `tunnel_setup.yml` | Nginx (loopback) + Cloudflare Tunnel |
+| `deploy_sites.yml` | Marketing site + docs (static, Node build in Docker) |
 
-## Local usage
+After first `deploy` + tunnel: create the platform admin by hand  
+(`createsuperuser` on the VM) — see [`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md) § 3.8.  
+No default login is seeded. Then `deploy-sites-staging` for website/docs.
+
+## Local usage (laptop only — not the server)
+
+Day-to-day deploys run from **AWX** ([`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md)).  
+On your PC you only need Ansible to **encrypt vault strings** (and rare local checks).
+
+One-time setup on the laptop:
 
 ```bash
 cd ~/Dev/cleantask-awx
-python3 -m venv .venv && .venv/bin/pip install 'ansible-core>=2.16,<2.20'
+python3 -m venv .venv
+.venv/bin/pip install 'ansible-core>=2.16,<2.20'
 .venv/bin/ansible-galaxy collection install -r collections/requirements.yml -p collections
+```
 
-# Secrets: encrypt each value (see docs/GUIDE_AWX.md), e.g.
-#   SECRET=$(openssl rand -base64 24)
-#   .venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' "$SECRET"
+Then encrypt a secret (example):
+
+```bash
+SECRET=$(openssl rand -base64 24)
+.venv/bin/ansible-vault encrypt_string --name 'vault_pg_password' "$SECRET"
 # Paste the !vault block into inventories/staging/vault.yml
 # (prod = inventories/prod/.../vault.yml). Do not encrypt the whole file.
-
-# Prefer running jobs from the AWX console (docs/GUIDE_AWX.md).
 ```
 
 ## Groups
