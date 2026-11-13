@@ -50,13 +50,14 @@
     group: "{{ ansible_user }}"
     mode: "0700"
 
-- name: Media directory
+- name: Media directory (owned by container appuser)
   file:
     path: "{{ app_media_host_path }}"
     state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: "{{ app_media_uid }}"
+    group: "{{ app_media_gid }}"
     mode: "0755"
+    recurse: true
 
 - name: Deploy key (read-only clone of cleantask)
   copy:

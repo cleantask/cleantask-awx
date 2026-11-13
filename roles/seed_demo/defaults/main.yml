@@ -9,3 +9,6 @@ no_jobs: false
 app_root: /opt/cleantask
 app_compose_file: docker-compose.prod.yml
 app_compose_override: docker-compose.override.yml
+app_media_host_path: /var/lib/cleantask/media
+app_media_uid: 10001
+app_media_gid: 10001

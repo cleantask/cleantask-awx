@@ -9,6 +9,9 @@ app_compose_override: docker-compose.override.yml
 app_image_name: cleantask
 app_keep_images: 3
 app_media_host_path: /var/lib/cleantask/media
+# Dockerfile USER appuser --uid 10001 (must own the bind-mounted media tree).
+app_media_uid: 10001
+app_media_gid: 10001
 # Deploy key lives OUTSIDE app_root so `git clone` sees an empty directory.
 app_deploy_key_dir: /var/lib/cleantask/deploy
 # Fixed bridge subnet so pg_hba + nftables stay predictable.
