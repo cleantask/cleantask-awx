@@ -21,9 +21,9 @@ Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
 | `seed_demo.yml` | Staging-only demo orgs (`create_demo_data`) |
 
 After first `deploy` + tunnel: either `seed-demo-staging` (BrightClean /
-SparkleHome + platform admin) or a manual `createsuperuser` — see
-[`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md) § 3.8–3.9. Then `deploy-sites-staging`
-for website/docs.
+SparkleHome + platform admin; all accounts share `vault_demo_password`)
+or a manual `createsuperuser` — see [`docs/GUIDE_AWX.md`](docs/GUIDE_AWX.md)
+§ 3.8–3.9. Then `deploy-sites-staging` for website/docs.
 
 ## Local usage (laptop only — not the server)
 

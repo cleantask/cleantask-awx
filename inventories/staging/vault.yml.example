@@ -27,7 +27,10 @@ vault_app_git_deploy_key: A_RENSEIGNER
 vault_website_git_deploy_key: A_RENSEIGNER   # cleantask/cleantask-website
 vault_docs_git_deploy_key: A_RENSEIGNER      # cleantask/cleantask-docs
 
-# Staging demo seed only (seed_demo.yml → CLEANTASK_DEMO_PASSWORD). Not used in prod.
+# Staging demo seed only (seed_demo.yml). One shared app password for EVERY
+# demo account (platform admin + BrightClean + SparkleHome). Injected as
+# CLEANTASK_DEMO_PASSWORD on compose run — never written to the durable .env.
+# Not used in prod.
 vault_demo_password: A_RENSEIGNER
 
 # ── email / OAuth ─────────────────────────────────────────────────────────

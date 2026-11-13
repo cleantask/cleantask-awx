@@ -346,13 +346,32 @@ Après `deploy-staging`, peupler BrightClean / SparkleHome via
 le `.env` durable). Sans `--reset` : orgs déjà présentes = skip ; comptes
 existants jamais écrasés.
 
+#### `vault_demo_password` — un mot de passe pour tous les comptes démo
+
+Ce n’est **pas** un mot de passe SSH / Django `SECRET_KEY` / Postgres.
+C’est le **mot de passe applicatif unique** partagé par **tous** les
+utilisateurs créés par le seed (`CLEANTASK_DEMO_PASSWORD`) :
+
+| Compte | Exemple d’email | Même mot de passe ? |
+|---|---|---|
+| Platform admin | (email du seed, ex. `jerome.pauwels@cleantask.co`) | oui → `vault_demo_password` |
+| Owners / managers / cleaners BrightClean | `*@brightclean.be` | oui |
+| Owners / managers / cleaners SparkleHome | `*@sparklehome.be` | oui |
+
+Login = **email** + ce mot de passe (pas le username).  
+Choisis une valeur assez forte (staging est public), chiffre-la dans le
+vault, et range-la dans le gestionnaire d’équipe. Le job AWX ne la
+réaffiche pas dans la sortie (seulement les emails créés).
+
+Changer `vault_demo_password` **après** un seed déjà fait ne met **pas**
+à jour les comptes existants — il faudrait un wipe / re-seed (hors
+scope AWX, voir fin de §).
+
 #### Prérequis
 
-- [ ] `deploy-staging` déjà **Réussi**
-- [ ] App `cleantask` sur la branche déployée contient le gate
-  `CLEANTASK_ALLOW_DEMO_SEED` (sinon `DEV-ONLY` / `DEBUG=False`)
+- [ ] `deploy-staging` déjà **Réussi** (image avec le gate
+  `CLEANTASK_ALLOW_DEMO_SEED`)
 - [ ] `vault_demo_password` chiffré dans `inventories/staging/vault.yml`
-  (mot de passe commun à tous les comptes démo)
 
 ```bash
 cd ~/Dev/cleantask-awx
@@ -373,11 +392,12 @@ cd ~/Dev/cleantask-awx
 | Extra vars (optionnel) | `single_org: true` / `no_jobs: true` |
 | Demander au lancement | optionnel (pour `single_org` / `no_jobs`) |
 
-**Lancer.** Sortie AWX : emails créés ; mot de passe = `vault_demo_password`.
+**Lancer.** Sortie AWX : liste des emails ; connexion avec
+`vault_demo_password`.
 
 | URL | Qui |
 |---|---|
-| `https://app-staging.cleantask.co/login/` | emails démo (owners, managers, cleaners) |
+| `https://app-staging.cleantask.co/login/` | n’importe quel email démo + `vault_demo_password` |
 | `https://app-staging.cleantask.co/platform/` | platform admin seedé (si l’email n’existait pas) |
 
 `--reset` (wipe total) **n’est pas** exposé ici : réservé au laptop
@@ -417,7 +437,7 @@ sudo docker compose \
 | Clone du dépôt **Ansible** | AWX `git-cleantask-awx` seulement |
 | Clone app | `vault_app_git_deploy_key` |
 | Clone website / docs | `vault_website_git_deploy_key` / `vault_docs_git_deploy_key` (clés **distinctes**) |
-| Mot de passe comptes démo staging | `vault_demo_password` (job `seed-demo-staging` seulement) |
+| Mot de passe **partagé** de tous les comptes démo staging | `vault_demo_password` → `CLEANTASK_DEMO_PASSWORD` (`seed-demo-staging` seulement ; pas prod) |
 
 Jamais de secret en clair dans les Variables d’un modèle.
 
