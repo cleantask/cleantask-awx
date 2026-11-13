@@ -34,6 +34,15 @@
       {{ app_root }} has no {{ app_compose_file }}. Run deploy-staging first.
     quiet: true
 
+- name: Ensure media is writable by container appuser
+  file:
+    path: "{{ app_media_host_path }}"
+    state: directory
+    owner: "{{ app_media_uid }}"
+    group: "{{ app_media_gid }}"
+    mode: "0755"
+    recurse: true
+
 - name: Build create_demo_data argv
   set_fact:
     seed_demo_cmd:
