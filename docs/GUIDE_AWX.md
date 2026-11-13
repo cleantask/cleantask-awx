@@ -253,10 +253,9 @@ Un modèle **par environnement** (même playbook `server_setup.yml`, inventaire 
 Puis **Lancer**.
 
 PostgreSQL majeur = **18** (`pg_version` dans `group_vars/all`), identique
-au laptop (`postgres:18` / CI). Staging a `pg_purge_other_majors: true` :
-un ancien cluster 16 (etc.) est **détruit** pour que le 18 prenne le port
-`5432`. Ne jamais activer ce flag en prod avec des données à garder
-(upgrade = `pg_upgrade` / dump-restore planifié).
+au laptop (`postgres:18` / CI). Partir d’une VM **sans** PostgreSQL (sinon
+un ancien majeur garderait `:5432` et le 18 irait sur `:5433`). Upgrade
+majeur en prod = `pg_upgrade` / dump-restore planifié, pas ce playbook.
 
 ### 3.6 Modèle `deploy-staging` (application)
 
