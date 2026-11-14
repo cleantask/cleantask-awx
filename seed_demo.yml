@@ -5,6 +5,8 @@
 # Extra vars (optional):
 #   single_org: true|false   (default false — BrightClean + SparkleHome)
 #   no_jobs: true|false      (default false)
+#   reset: true|false        (default false — wipe ALL staging data first,
+#                             services stopped then restarted; see GUIDE_AWX § 3.8)
 
 - hosts: app_servers
   become: true

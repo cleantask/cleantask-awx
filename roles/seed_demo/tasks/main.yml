@@ -1,6 +1,9 @@
 ---
 # Run create_demo_data once on the live Compose stack (staging only).
 # CLEANTASK_ALLOW_DEMO_SEED is injected on this process only — not written to .env.
+# reset: true first wipes staging (create_demo_data --reset): the app refuses
+# unless the .env declares CLEANTASK_DISPOSABLE_* (roles/app writes them only
+# when allow_demo_seed is set) and no other session uses the database.
 
 - name: Refuse demo seed outside staging
   assert:
@@ -34,6 +37,23 @@
       {{ app_root }} has no {{ app_compose_file }}. Run deploy-staging first.
     quiet: true
 
+- name: Read the disposable declaration of the deployed .env
+  command: grep -c '^CLEANTASK_DISPOSABLE_DB=' {{ app_root }}/.env
+  register: seed_disposable_declared
+  changed_when: false
+  failed_when: false
+  when: reset | bool
+
+- name: Fail before stopping anything when staging is not declared disposable
+  assert:
+    that:
+      - seed_disposable_declared.rc == 0
+    fail_msg: >-
+      {{ app_root }}/.env has no CLEANTASK_DISPOSABLE_* lines. Run deploy-staging
+      once with this version of roles/app, then relaunch with reset: true.
+    quiet: true
+  when: reset | bool
+
 - name: Ensure media is writable by container appuser
   file:
     path: "{{ app_media_host_path }}"
@@ -63,6 +83,9 @@
       - python
       - manage.py
       - create_demo_data
+      - "{{ '--reset' if (reset | bool) else '' }}"
+      - "{{ '--confirm' if (reset | bool) else '' }}"
+      - "{{ pg_database if (reset | bool) else '' }}"
       - "{{ '--single-org' if (single_org | bool) else '' }}"
       - "{{ '--no-jobs' if (no_jobs | bool) else '' }}"
 
@@ -70,21 +93,67 @@
   set_fact:
     seed_demo_cmd: "{{ seed_demo_cmd | select('string') | reject('equalto', '') | list }}"
 
-- name: Seed demo data (one-shot ALLOW_DEMO_SEED)
-  become: true
-  become_user: "{{ ansible_user }}"
-  command:
-    argv: "{{ seed_demo_cmd }}"
-  args:
-    chdir: "{{ app_root }}"
-  environment:
-    CLEANTASK_ALLOW_DEMO_SEED: "1"
-    CLEANTASK_DEMO_PASSWORD: "{{ vault_demo_password }}"
-  register: seed_demo_run
-  changed_when: >-
-    'SUCCESS' in (seed_demo_run.stdout | default(''))
-    or 'Created' in (seed_demo_run.stdout | default(''))
-  failed_when: seed_demo_run.rc != 0
+- name: Compose command prefix
+  set_fact:
+    seed_compose:
+      - docker
+      - compose
+      - -f
+      - "{{ app_compose_file }}"
+      - -f
+      - "{{ app_compose_override }}"
+
+- name: Seed (and reset) with the app services stopped when resetting
+  block:
+    - name: Stop the services that use the database and Redis
+      become: true
+      become_user: "{{ ansible_user }}"
+      command:
+        argv: "{{ seed_compose + ['stop'] + app_reset_stopped_services }}"
+      args:
+        chdir: "{{ app_root }}"
+      when: reset | bool
+
+    - name: Seed demo data (one-shot ALLOW_DEMO_SEED)
+      become: true
+      become_user: "{{ ansible_user }}"
+      command:
+        argv: "{{ seed_demo_cmd }}"
+      args:
+        chdir: "{{ app_root }}"
+      environment:
+        CLEANTASK_ALLOW_DEMO_SEED: "1"
+        CLEANTASK_DEMO_PASSWORD: "{{ vault_demo_password }}"
+      register: seed_demo_run
+      changed_when: >-
+        'SUCCESS' in (seed_demo_run.stdout | default(''))
+        or 'Created' in (seed_demo_run.stdout | default(''))
+        or 'Reset done' in (seed_demo_run.stdout | default(''))
+      failed_when: seed_demo_run.rc != 0
+
+  always:
+    - name: Restart the stopped services
+      become: true
+      become_user: "{{ ansible_user }}"
+      command:
+        argv: "{{ seed_compose + ['up', '-d'] }}"
+      args:
+        chdir: "{{ app_root }}"
+      when: reset | bool
+
+    - name: Wait for health endpoint
+      uri:
+        url: "{{ app_health_url }}"
+        headers:
+          Host: "{{ app_health_host_header }}"
+          X-Forwarded-Proto: https
+        status_code: 200
+        return_content: false
+      register: seed_health
+      retries: 18
+      delay: 5
+      until: seed_health.status | default(0) == 200
+      when: reset | bool
 
 - name: Show create_demo_data output
   debug:

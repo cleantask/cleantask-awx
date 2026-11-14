@@ -5,6 +5,10 @@ allow_demo_seed: false
 # Optional filters (override with AWX extra vars).
 single_org: false
 no_jobs: false
+# Full reset before the seed: every organization, user, media file and Redis
+# key of staging is deleted (create_demo_data --reset). Web, workers and beat
+# are stopped for the duration and restarted afterwards, even on failure.
+reset: false
 
 app_root: /opt/cleantask
 app_compose_file: docker-compose.prod.yml
@@ -12,3 +16,11 @@ app_compose_override: docker-compose.override.yml
 app_media_host_path: /var/lib/cleantask/media
 app_media_uid: 10001
 app_media_gid: 10001
+# Services that touch the database or Redis; Redis itself keeps running.
+app_reset_stopped_services:
+  - web
+  - worker
+  - worker-documents
+  - beat
+app_health_url: http://127.0.0.1:8000/core/health/
+app_health_host_header: localhost

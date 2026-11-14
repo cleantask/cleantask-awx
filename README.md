@@ -18,7 +18,7 @@ Server naming: see `cleantask` → `docs/Infrastructure/SERVER_NAMING.md`.
 | `deploy.yml` | Application (Compose, migrate, health) |
 | `tunnel_setup.yml` | Nginx (loopback) + Cloudflare Tunnel |
 | `deploy_sites.yml` | Marketing site + docs (static, Node build in Docker) |
-| `seed_demo.yml` | Staging-only demo orgs (`create_demo_data`) |
+| `seed_demo.yml` | Staging-only demo orgs (`create_demo_data`); `reset: true` wipes staging first |
 
 After first `deploy` + tunnel: either `seed-demo-staging` (BrightClean /
 SparkleHome + platform admin; all accounts share `vault_demo_password`)

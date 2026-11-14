@@ -369,8 +369,7 @@ vault, et range-la dans le gestionnaire d’équipe. Le job AWX ne la
 réaffiche pas dans la sortie (seulement les emails créés).
 
 Changer `vault_demo_password` **après** un seed déjà fait ne met **pas**
-à jour les comptes existants — il faudrait un wipe / re-seed (hors
-scope AWX, voir fin de §).
+à jour les comptes existants — relancer avec `reset: true` (voir fin de §).
 
 #### Prérequis
 
@@ -394,8 +393,8 @@ cd ~/Dev/cleantask-awx
 | Playbook | `seed_demo.yml` |
 | Identifiants | Machine + Vault |
 | Élévation | **cochée** |
-| Extra vars (optionnel) | `single_org: true` / `no_jobs: true` |
-| Demander au lancement | optionnel (pour `single_org` / `no_jobs`) |
+| Extra vars (optionnel) | `single_org: true` / `no_jobs: true` / `reset: true` |
+| Demander au lancement | **coché** (pour choisir `reset` à chaque lancement) |
 
 **Lancer.** Sortie AWX : liste des emails ; connexion avec
 `vault_demo_password`.
@@ -405,9 +404,39 @@ cd ~/Dev/cleantask-awx
 | `https://app-staging.cleantask.co/login/` | n’importe quel email démo + `vault_demo_password` |
 | `https://app-staging.cleantask.co/platform/` | platform admin seedé (si l’email n’existait pas) |
 
-`--reset` (wipe total) **n’est pas** exposé ici : réservé au laptop
-(`DEBUG` + `CLEANTASK_DISPOSABLE_*`). Pour vider staging : snapshot Proxmox
-+ recreate DB / redeploy, ou procédure manuelle hors AWX.
+#### Reset complet du staging — `reset: true`
+
+Même reset que `./reset_demo_data.sh` sur le laptop, puis le seed : le
+staging revient à une installation neuve. **Tout** est supprimé :
+organisations (y compris créées à la main), utilisateurs, platform admin,
+connexions e-mail, fichiers media, clés Redis. Schéma et migrations restent.
+Le platform admin et les comptes démo sont recréés avec `vault_demo_password`.
+
+Déroulé du job :
+
+1. vérifie que le `.env` du serveur déclare `CLEANTASK_DISPOSABLE_*`
+   (sinon échec **avant** d’arrêter quoi que ce soit) ;
+2. `docker compose stop web worker worker-documents beat` (Redis reste up) ;
+3. `create_demo_data --reset --confirm cleantask` (+ `single_org` /
+   `no_jobs`), avec `CLEANTASK_ALLOW_DEMO_SEED=1` sur ce seul process ;
+4. `docker compose up -d` + attente du health **200** — exécuté même si
+   l’étape 3 échoue.
+
+Staging coupé ~1 à 2 min. Le reset refuse (rien n’est touché) si une autre
+session est connectée à la base ou un autre client à Redis.
+
+**Prérequis, une fois :** relancer `deploy-staging` avec cette version de
+`roles/app`. Le rôle écrit dans le `.env` staging (jamais prod : seulement
+si `allow_demo_seed: true` et `env_name: staging`) :
+
+```
+CLEANTASK_DISPOSABLE_DB=cleantask
+CLEANTASK_DISPOSABLE_REDIS=redis:6379/0,redis:6379/2,redis-cache:6379/0
+CLEANTASK_DISPOSABLE_MEDIA_ROOT=/app/media
+```
+
+L’image doit aussi contenir le reset « staging » de
+`apps/core/services/dev_reset.py` (branche `dev` à jour).
 
 ### 3.9 Premier login prod (ou staging sans seed) — `createsuperuser`
 
