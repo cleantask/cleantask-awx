@@ -123,6 +123,9 @@
         app_marker_slurp.content is defined
         and (app_marker_slurp.content | b64decode | trim) == app_git_sha.stdout
       }}
+    # Image running before this deploy: kept as the rollback image.
+    app_previous_image_tag: >-
+      {{ (app_marker_slurp.content | b64decode | trim)[:12] if app_marker_slurp.content is defined else '' }}
 
 # Encode the DB password without Jinja urlencode (missing / broken in some AWX EEs).
 - name: URL-encode Postgres password
@@ -230,10 +233,62 @@
     mode: "0644"
   when: app_needs_deploy | bool
 
+# One image tag per line, oldest first, only for versions that passed the
+# health check: an image that was built but never served is not a fallback.
+- name: Record the image put in service
+  become: true
+  become_user: "{{ ansible_user }}"
+  shell: |
+    set -eu
+    history="{{ app_root }}/{{ app_deploy_history }}"
+    touch "$history"
+    if [ "$(tail -n 1 "$history")" != "{{ app_image_tag }}" ]; then
+      echo "{{ app_image_tag }}" >> "$history"
+    fi
+    tail -n 20 "$history" > "$history.tmp"
+    mv "$history.tmp" "$history"
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: app_needs_deploy | bool
+
+# Runs only after the health check passed. Keeps app_keep_images images: the
+# one in service and the last ones put in service before it. While the history
+# is shorter than that (first runs), the image of the deploy marker and then
+# the newest other tags fill the gap.
+- name: Keep the last {{ app_keep_images }} {{ app_image_name }} images put in service
+  become: true
+  become_user: "{{ ansible_user }}"
+  shell: |
+    set -eu
+    history="{{ app_root }}/{{ app_deploy_history }}"
+    {% raw %}tags=$(docker image ls {% endraw %}{{ app_image_name }}{% raw %} --format '{{.Tag}}' | grep -vx '<none>' || true){% endraw %}
+
+    keep=$( { tac "$history" 2>/dev/null || true; echo "{{ app_previous_image_tag | trim }}"; printf '%s\n' "$tags"; } \
+      | grep -v '^$' | grep -Fx -f <(printf '%s\n' "$tags") | awk '!seen[$0]++' | head -n {{ app_keep_images | int }})
+    for tag in $tags; do
+      if ! printf '%s\n' "$keep" | grep -qx "$tag"; then
+        docker image rm "{{ app_image_name }}:$tag"
+      fi
+    done
+  args:
+    executable: /bin/bash
+  register: app_image_cleanup
+  changed_when: "'Untagged' in app_image_cleanup.stdout"
+  when: app_needs_deploy | bool
+
 - name: Prune dangling images
   become: true
   become_user: "{{ ansible_user }}"
   command: docker image prune -f
+  changed_when: false
+  failed_when: false
+  when: app_needs_deploy | bool
+
+- name: Prune build cache older than a week
+  become: true
+  become_user: "{{ ansible_user }}"
+  command: docker builder prune -f --filter until=168h
   changed_when: false
   failed_when: false
   when: app_needs_deploy | bool

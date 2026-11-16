@@ -7,7 +7,10 @@ app_version: main
 app_compose_file: docker-compose.prod.yml
 app_compose_override: docker-compose.override.yml
 app_image_name: cleantask
-app_keep_images: 3
+# Images kept after a deploy: the one in service and the previous ones put in
+# service (.deployed_history), newest first. 2 = current + one fallback.
+app_keep_images: 2
+app_deploy_history: .deployed_history
 app_media_host_path: /var/lib/cleantask/media
 # Dockerfile USER appuser --uid 10001 (must own the bind-mounted media tree).
 app_media_uid: 10001

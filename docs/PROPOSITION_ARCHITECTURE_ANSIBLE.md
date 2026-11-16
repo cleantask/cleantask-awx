@@ -214,7 +214,7 @@ Reprend `deploy.sh` en l'enrichissant :
 5. `migrate`, `check_encryption_keys`, `check_outlook_client_secret` ;
 6. `docker compose up -d` avec la nouvelle étiquette ;
 7. contrôle de santé (`/core/health/`) ;
-8. écriture du marqueur, et conservation des N dernières images pour `rollback.yml`.
+8. écriture du marqueur et de l'historique `.deployed_history`, puis conservation des `app_keep_images` (2) dernières images mises en service — la version courante et une version de secours ; les autres images et le cache de build de plus d'une semaine sont supprimés.
 
 ## 7. Noms de domaine et exposition HTTPS
 
